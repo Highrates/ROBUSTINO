@@ -8,21 +8,22 @@
 ROBUSTINO/
 ├── src/
 │   ├── components/         # React компоненты
-│   │   ├── common/        # Общие компоненты (Header, Footer, Button, Loader)
-│   │   ├── home/          # Компоненты главной страницы
-│   │   ├── 3d/            # 3D компоненты (ChairModel, ModelViewer)
-│   │   ├── product/       # Компоненты продуктов
-│   │   ├── blog/          # Компоненты блога
-│   │   └── admin/         # Компоненты админ панели
+│   │   ├── common/        # Общие компоненты (Header, Footer, Button, Loader, ContactsSection, ErrorBoundary)
+│   │   ├── home/          # Компоненты главной страницы (Hero, AboutSection, ProductCatalog, ProjectsSection, BlogSection, FAQSection)
+│   │   ├── 3d/            # 3D компоненты (ChairModel, ModelViewer, ErrorBoundary)
+│   │   ├── product/      # Компоненты продуктов (Navbar)
+│   │   └── admin/         # Компоненты админ панели (AdminLayout, FileUpload, ImageUpload, ProtectedRoute, RichTextEditor)
 │   │
 │   ├── pages/             # Страницы приложения
-│   │   ├── Home.jsx
-│   │   ├── ProductPage.jsx
-│   │   ├── About.jsx
-│   │   ├── Articles.jsx
-│   │   ├── Article.jsx
-│   │   ├── Contacts.jsx
-│   │   └── Admin/         # Страницы админки
+│   │   ├── Home.jsx       # Главная страница
+│   │   ├── Products.jsx   # Страница всех продуктов
+│   │   ├── ProductPage.jsx # Страница одного продукта с 3D моделью
+│   │   ├── Articles.jsx   # Страница всех статей
+│   │   ├── Article.jsx   # Страница одной статьи
+│   │   ├── Projects.jsx   # Страница всех проектов
+│   │   ├── About.jsx     # О компании
+│   │   ├── Page.jsx      # Динамические страницы для FAQ ссылок
+│   │   └── Admin/         # Страницы админки (Dashboard, Products, Articles, Projects, FAQ, Upholstery, FAQLinks, Presentation)
 │   │
 │   ├── hooks/             # Custom React hooks
 │   │   ├── useGSAP.js            # GSAP анимации
@@ -35,7 +36,12 @@ ROBUSTINO/
 │   ├── store/             # State management (Zustand)
 │   │   ├── productsStore.js
 │   │   ├── articlesStore.js
-│   │   └── authStore.js (будет добавлен)
+│   │   ├── projectsStore.js
+│   │   ├── faqStore.js
+│   │   ├── faqLinksStore.js
+│   │   ├── presentationStore.js
+│   │   ├── upholsteryStore.js
+│   │   └── authStore.js
 │   │
 │   ├── config/            # Конфигурация
 │   │   └── supabase.js    # Supabase клиент
@@ -44,16 +50,13 @@ ROBUSTINO/
 │   │   └── global.css     # Глобальные стили + Tailwind
 │   │
 │   ├── assets/            # Статичные файлы
-│   │   ├── models/        # GLB модели кресел
-│   │   ├── images/        # Изображения
-│   │   └── icons/         # Иконки
 │   │
 │   ├── App.jsx            # Главный компонент приложения
 │   └── main.jsx           # Entry point
 │
-├── public/                # Публичные файлы
-├── PLAN.md               # Полный план разработки
+├── public/                # Публичные файлы (модели, изображения, иконки)
 ├── ARCHITECTURE.md       # Этот файл - архитектура проекта
+├── PROJECT_STRUCTURE.md  # Структура проекта
 └── package.json          # Зависимости проекта
 ```
 
@@ -73,21 +76,25 @@ ROBUSTINO/
 ### 3D визуализация
 - **Three.js** - библиотека для 3D графики
 - **React Three Fiber** - React renderer для Three.js
-- **@react-three/drei** - хелперы для React Three Fiber
+- **@react-three/drei** - хелперы для React Three Fiber (Environment, Center, useGLTF)
 
 ### Анимации
 - **GSAP** - профессиональная библиотека анимаций
 - **ScrollTrigger** - scroll-based анимации (плагин GSAP)
+- **Оптимизации**: `will-change` для GPU-ускорения, поддержка `prefers-reduced-motion`
 
 ### Backend & Database
 - **Supabase** - BaaS (Backend as a Service)
   - PostgreSQL база данных
   - Аутентификация
-  - Storage для файлов (GLB модели, изображения)
-  - Realtime (опционально)
+  - Storage для файлов (GLB модели, изображения, документы)
+  - Row Level Security (RLS) для защиты данных
 
 ### State Management
 - **Zustand** - легковесный state manager
+
+### Rich Text Editor
+- **react-quill** - WYSIWYG редактор для админ панели
 
 ---
 
@@ -97,66 +104,90 @@ ROBUSTINO/
 
 #### `products` - Товары
 ```sql
-id              UUID PRIMARY KEY DEFAULT uuid_generate_v4()
+id              UUID PRIMARY KEY
 name            TEXT NOT NULL
-slug            TEXT UNIQUE NOT NULL
+type            TEXT
 description     TEXT
-full_description TEXT
-category        TEXT
-model_url       TEXT  -- URL GLB модели
+model_url       TEXT  -- URL GLB модели из Storage
 images          TEXT[] -- Массив URL изображений
-specifications  JSONB -- Характеристики (размеры, материалы и т.д.)
 status          TEXT DEFAULT 'draft' -- 'draft' | 'published'
+display_order   INTEGER
+delivery_time   TEXT
+volume_m3       NUMERIC
+weight_kg       NUMERIC
+in_stock        TEXT
 created_at      TIMESTAMP DEFAULT NOW()
 updated_at      TIMESTAMP DEFAULT NOW()
 ```
 
 #### `articles` - Статьи блога
 ```sql
-id              UUID PRIMARY KEY DEFAULT uuid_generate_v4()
+id              UUID PRIMARY KEY
 title           TEXT NOT NULL
-slug            TEXT UNIQUE NOT NULL
-content         TEXT NOT NULL
-excerpt         TEXT
+subtitle        TEXT
+content         TEXT NOT NULL -- Rich text (HTML)
 cover_image     TEXT
-author          TEXT
-category        TEXT
-tags            TEXT[]
 status          TEXT DEFAULT 'draft'
+display_order   INTEGER
+article_date    DATE
+published_at    TIMESTAMP
 created_at      TIMESTAMP DEFAULT NOW()
 updated_at      TIMESTAMP DEFAULT NOW()
-published_at    TIMESTAMP
 ```
 
 #### `projects` - Реализованные объекты
 ```sql
-id              UUID PRIMARY KEY DEFAULT uuid_generate_v4()
+id              UUID PRIMARY KEY
 name            TEXT NOT NULL
-client          TEXT
-description     TEXT
-images          TEXT[]
-logo_url        TEXT
-date            DATE
+description     TEXT -- Rich text (HTML)
+images          TEXT[] -- Массив URL изображений
+seats_count     INTEGER
+product_id      UUID REFERENCES products(id)
+upholstery_variant TEXT
+display_order   INTEGER
 created_at      TIMESTAMP DEFAULT NOW()
+updated_at      TIMESTAMP DEFAULT NOW()
 ```
 
 #### `faq` - Часто задаваемые вопросы
 ```sql
-id              UUID PRIMARY KEY DEFAULT uuid_generate_v4()
+id              UUID PRIMARY KEY
 question        TEXT NOT NULL
 answer          TEXT NOT NULL
-order           INTEGER DEFAULT 0
+display_order   INTEGER DEFAULT 0
 created_at      TIMESTAMP DEFAULT NOW()
+updated_at      TIMESTAMP DEFAULT NOW()
 ```
 
-#### `contacts` - Обращения с формы контактов
+#### `faq_links` - Ссылки в секции FAQ
 ```sql
-id              UUID PRIMARY KEY DEFAULT uuid_generate_v4()
+id              UUID PRIMARY KEY
 name            TEXT NOT NULL
-email           TEXT NOT NULL
-phone           TEXT
-message         TEXT NOT NULL
+document_url    TEXT
+is_internal_page BOOLEAN DEFAULT false
+page_content    TEXT -- Rich text для внутренних страниц
+display_order   INTEGER
 created_at      TIMESTAMP DEFAULT NOW()
+updated_at      TIMESTAMP DEFAULT NOW()
+```
+
+#### `presentation` - Презентация кресел PDF
+```sql
+id              UUID PRIMARY KEY
+name            TEXT NOT NULL
+document_url    TEXT
+created_at      TIMESTAMP DEFAULT NOW()
+updated_at      TIMESTAMP DEFAULT NOW()
+```
+
+#### `upholstery_variants` - Варианты обивки
+```sql
+id              UUID PRIMARY KEY
+name            TEXT NOT NULL
+image_url       TEXT
+description     TEXT
+created_at      TIMESTAMP DEFAULT NOW()
+updated_at      TIMESTAMP DEFAULT NOW()
 ```
 
 ### Storage Buckets
@@ -164,6 +195,7 @@ created_at      TIMESTAMP DEFAULT NOW()
 - `images` - для изображений продуктов
 - `articles` - для изображений статей
 - `projects` - для фотографий проектов
+- `documents` - для PDF документов и других файлов
 
 ---
 
@@ -207,17 +239,19 @@ Admin Component → Form → Zustand Store → API Utils → Supabase
   - `768px - 1024px` - Tablet
   - `> 1024px` - Desktop
 
-### Цветовая схема (будет обновлена под брендбук)
-- Primary: `#0ea5e9` (голубой)
-- Secondary: `#64748b` (серый)
-- Дополнительные цвета определяются из дизайна
+### Цветовая схема
+- **main-bg**: `#F1F2F0` (основной фон)
+- **second-bg**: `#D5D7D4` (вторичный фон)
+- **main-text**: `#363636` (основной текст)
+- **second-text**: `#A9A9A9` (вторичный текст)
 
 ### Типографика
-- Заголовки: **Montserrat** (font-heading)
-- Основной текст: **Inter** (font-sans)
+- **Шрифт**: `Commissioner` (sans-serif)
+- Заголовки: `font-weight: 450`, `text-transform: uppercase`
+- Основной текст: `font-weight: 450`
 
 ### Spacing
-- 8px grid system (кратно 8: 8, 16, 24, 32, 48, 64...)
+- 8px grid system (кратно 8: 8, 16, 24, 32, 48, 64, 86, 124...)
 
 ---
 
@@ -227,29 +261,60 @@ Admin Component → Form → Zustand Store → API Utils → Supabase
 
 #### 1. Fade In при загрузке
 ```javascript
-import { fadeIn } from '@utils/animations'
-
-useGSAP(() => {
-  fadeIn('.hero-title', { delay: 0.3 })
-}, [])
+gsap.to(element, {
+  opacity: 1,
+  y: 0,
+  duration: 0.8,
+  ease: 'power3.out'
+})
 ```
 
 #### 2. Scroll-triggered анимации
 ```javascript
-import { scrollAnimation } from '@utils/animations'
-
-useGSAP(() => {
-  scrollAnimation('.product-card')
-}, [])
+gsap.to(element, {
+  opacity: 1,
+  y: 0,
+  scrollTrigger: {
+    trigger: sectionRef.current,
+    start: 'top 80%',
+    toggleActions: 'play none none none'
+  }
+})
 ```
 
 #### 3. Stagger для списков
 ```javascript
-import { staggerIn } from '@utils/animations'
+gsap.to(cards, {
+  opacity: 1,
+  x: 0,
+  scale: 1,
+  stagger: 0.15,
+  ease: 'power2.out'
+})
+```
 
-useGSAP(() => {
-  staggerIn('.article-card', { stagger: 0.2 })
-}, [])
+### Оптимизации анимаций
+
+#### `will-change` для GPU-ускорения
+```javascript
+// Перед анимацией
+gsap.set(element, { willChange: 'opacity, transform' })
+
+// После анимации
+gsap.set(element, { willChange: 'auto' })
+```
+
+#### Поддержка `prefers-reduced-motion`
+```javascript
+const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+if (prefersReducedMotion) {
+  // Пропускаем анимации, устанавливаем финальные значения
+  gsap.set(element, { opacity: 1, y: 0 })
+} else {
+  // Запускаем анимации
+  gsap.to(element, { ... })
+}
 ```
 
 ---
@@ -267,11 +332,20 @@ useGSAP(() => {
 import ModelViewer from '@components/3d/ModelViewer'
 
 <ModelViewer 
-  modelPath="/models/chair-1.glb"
+  modelPath={product.model_url}
   enableControls={true}
-  autoRotate={false}
+  autoRotate={autoRotate}
+  zoomLevel={zoomLevel}
+  cameraPosition={[0, 0.65, 3]}
+  modelRotation={[0, -0.15, 0]}
+  scale={1.1}
 />
 ```
+
+### Настройки освещения
+- **Directional Light**: `intensity: 3.7`, `position: [2, 5, 2]`
+- **Environment**: `preset: "city"`, `environmentIntensity: 1.3`
+- **Camera**: `position: [0, 0.65, 2]`, `fov: 45`
 
 ### Lazy Loading
 ```javascript
@@ -287,15 +361,14 @@ useGLTF.preload('/models/chair-1.glb')
 1. Админ вводит email/password
 2. Supabase Auth проверяет данные
 3. Получаем JWT токен
-4. Токен хранится в localStorage
-5. Защищенные роуты проверяют наличие токена
+4. Токен хранится в localStorage через `authStore`
+5. Защищенные роуты проверяют наличие токена через `ProtectedRoute`
 
 ### Защита роутов
 ```jsx
-// Будет реализовано
-<PrivateRoute>
+<ProtectedRoute>
   <AdminDashboard />
-</PrivateRoute>
+</ProtectedRoute>
 ```
 
 ---
@@ -321,7 +394,7 @@ useGLTF.preload('/models/chair-1.glb')
 
 ### Разработка
 ```bash
-npm run dev          # Запуск dev сервера (порт 3000)
+npm run dev          # Запуск dev сервера
 npm run build        # Сборка для продакшена
 npm run preview      # Просмотр production build
 npm run lint         # ESLint проверка
@@ -361,39 +434,62 @@ VITE_SUPABASE_ANON_KEY=your_anon_key
 - Dynamic imports для тяжелых компонентов
 
 ### Изображения
-- WebP формат
+- WebP формат (опционально)
 - Lazy loading
 - Responsive images
 
 ### 3D модели
 - Suspense для загрузки
-- Упрощенные модели на мобильных
+- ErrorBoundary для обработки ошибок
 - Кэширование загруженных моделей
+
+### Анимации
+- `will-change` для GPU-ускорения
+- Поддержка `prefers-reduced-motion` для доступности
+- Оптимизация ScrollTrigger (refresh после DOM обновлений)
+
+### State Management
+- Кэширование данных в Zustand stores
+- Оптимизация запросов (проверка кэша перед запросом)
 
 ---
 
 ## 🎯 Ключевые особенности
 
 1. **Информационный сайт** - без e-commerce (корзины, оплаты)
-2. **12-15 товаров** - небольшой каталог
-3. **3D модели** - интерактивные GLB модели кресел
-4. **GSAP анимации** - плавные, современные анимации
-5. **Простая админка** - CRUD для товаров, статей, проектов, FAQ
-6. **Supabase** - готовое backend решение
+2. **Каталог товаров** - с 3D моделями и детальными страницами
+3. **3D модели** - интерактивные GLB модели кресел с контролами
+4. **GSAP анимации** - плавные, оптимизированные анимации
+5. **Админ панель** - полный CRUD для товаров, статей, проектов, FAQ, вариантов обивки
+6. **Supabase** - готовое backend решение с RLS
+7. **Доступность** - поддержка `prefers-reduced-motion`
 
 ---
 
-## 📖 Следующие шаги
+## 📖 Роутинг
 
-После инициализации проекта:
-1. Настроить Supabase (создать таблицы, бакеты)
-2. Добавить брендовые цвета в Tailwind config
-3. Загрузить GLB модели в `/src/assets/models/`
-4. Интегрировать дизайн из Figma
-5. Начать разработку компонентов
+### Публичные роуты
+- `/` - Главная страница
+- `/products` - Все продукты
+- `/product/:id` - Страница продукта
+- `/articles` - Все статьи
+- `/article/:id` - Страница статьи
+- `/projects` - Все проекты
+- `/about` - О компании
+- `/page/:id` - Динамические страницы для FAQ ссылок
+
+### Админ роуты (защищенные)
+- `/admin/login` - Вход в админ панель
+- `/admin` - Дашборд
+- `/admin/products` - Управление продуктами
+- `/admin/articles` - Управление статьями
+- `/admin/projects` - Управление проектами
+- `/admin/faq` - Управление FAQ
+- `/admin/upholstery` - Управление вариантами обивки
+- `/admin/faq-links` - Управление FAQ ссылками
+- `/admin/presentation` - Управление презентацией
 
 ---
 
-*Дата создания: 21 октября 2025*
-*Последнее обновление: 21 октября 2025*
-
+*Дата создания: 21 октября 2025*  
+*Последнее обновление: 11 января 2026*
