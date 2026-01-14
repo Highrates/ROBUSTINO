@@ -2,12 +2,13 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 
 // Pages
 import Home from '@pages/Home'
-import ProductPage from '@pages/ProductPage'
+import Product from '@pages/Product'
 import Products from '@pages/Products'
 import About from '@pages/About'
 import Articles from '@pages/Articles'
 import Article from '@pages/Article'
 import Projects from '@pages/Projects'
+import Upholstery from '@pages/Upholstery'
 import Page from '@pages/Page'
 
 // Admin Pages
@@ -23,6 +24,8 @@ import AdminFAQ from '@pages/Admin/AdminFAQ'
 import AdminFAQForm from '@pages/Admin/AdminFAQForm'
 import AdminUpholstery from '@pages/Admin/AdminUpholstery'
 import AdminUpholsteryForm from '@pages/Admin/AdminUpholsteryForm'
+import AdminCollections from '@pages/Admin/AdminCollections'
+import AdminCollectionForm from '@pages/Admin/AdminCollectionForm'
 import AdminFAQLinks from '@pages/Admin/AdminFAQLinks'
 import AdminFAQLinkForm from '@pages/Admin/AdminFAQLinkForm'
 import AdminPresentation from '@pages/Admin/AdminPresentation'
@@ -45,11 +48,12 @@ function App() {
         {/* Public Routes */}
         <Route path="/" element={<Home />} />
         <Route path="/products" element={<Products />} />
-        <Route path="/product/:id" element={<ProductPage />} />
+        <Route path="/product/:slug" element={<Product />} />
         <Route path="/about" element={<About />} />
         <Route path="/articles" element={<Articles />} />
-        <Route path="/article/:id" element={<Article />} />
+        <Route path="/article/:slug" element={<Article />} />
         <Route path="/projects" element={<Projects />} />
+        <Route path="/upholstery" element={<Upholstery />} />
         <Route path="/page/:id" element={<Page />} />
         
         {/* Dev Routes */}
@@ -182,6 +186,30 @@ function App() {
           element={
             <ProtectedRoute>
               <AdminUpholsteryForm />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/collections"
+          element={
+            <ProtectedRoute>
+              <AdminCollections />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/collections/new"
+          element={
+            <ProtectedRoute>
+              <AdminCollectionForm />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/collections/:id/edit"
+          element={
+            <ProtectedRoute>
+              <AdminCollectionForm />
             </ProtectedRoute>
           }
         />

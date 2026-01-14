@@ -11,18 +11,18 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger'
 gsap.registerPlugin(ScrollTrigger)
 
 const Article = () => {
-  const { id } = useParams()
-  const { currentArticle, fetchArticle, loading, error } = useArticlesStore()
+  const { slug } = useParams()
+  const { currentArticle, fetchArticleBySlug, loading, error } = useArticlesStore()
   const articleSectionRef = useRef(null)
   const articleTitlesWrapRef = useRef(null)
   const articleImgWrapperRef = useRef(null)
   const articleContentRef = useRef(null)
 
   useEffect(() => {
-    if (id) {
-      fetchArticle(id)
+    if (slug) {
+      fetchArticleBySlug(slug)
     }
-  }, [id, fetchArticle])
+  }, [slug, fetchArticleBySlug])
 
   // Скроллим вверх при монтировании страницы
   useEffect(() => {

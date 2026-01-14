@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import AdminLayout from '@components/admin/AdminLayout'
 import ImageUpload from '@components/admin/ImageUpload'
 import useUpholsteryStore from '@store/upholsteryStore'
+import useCollectionsStore from '@store/collectionsStore'
 
 const AdminUpholsteryForm = () => {
   const navigate = useNavigate()
@@ -10,15 +11,26 @@ const AdminUpholsteryForm = () => {
   const isEdit = !!id
 
   const { currentVariant, fetchVariant, addVariant, updateVariant, loading, fetchVariants } = useUpholsteryStore()
+  const { collections, fetchCollections, getOrCreateCollectionByName, loading: collectionsLoading } = useCollectionsStore()
 
   const [formData, setFormData] = useState({
     name: '',
     color: '',
     image_url: null,
+    collection_id: null,
+    new_collection_name: '', // Для создания новой коллекции
+    isCustomColor: false, // Флаг для отображения поля ввода кастомного цвета
   })
+
+  const [useNewCollection, setUseNewCollection] = useState(false)
 
   const [errors, setErrors] = useState({})
   const [submitting, setSubmitting] = useState(false)
+
+  // Загружаем коллекции при монтировании
+  useEffect(() => {
+    fetchCollections()
+  }, [fetchCollections])
 
   // Загружаем вариант для редактирования
   useEffect(() => {
@@ -45,11 +57,25 @@ const AdminUpholsteryForm = () => {
     let cancelled = false
 
     if (isEdit && currentVariant) {
+      const collection = currentVariant.upholstery_collections
+      const color = currentVariant.color || ''
+      // Проверяем, есть ли цвет в стандартном списке
+      const standardColors = [
+        'Белый', 'Черный', 'Серый', 'Бежевый', 'Коричневый', 'Красный', 'Синий',
+        'Зеленый', 'Желтый', 'Оранжевый', 'Фиолетовый', 'Розовый', 'Голубой',
+        'Темно-синий', 'Темно-коричневый', 'Светло-серый', 'Темно-серый', 'Кремовый'
+      ]
+      const isCustomColor = color && !standardColors.includes(color)
+      
       setFormData({
         name: currentVariant.name || '',
-        color: currentVariant.color || '',
+        color: color,
         image_url: currentVariant.image_url || null,
+        collection_id: currentVariant.collection_id || null,
+        new_collection_name: '',
+        isCustomColor: isCustomColor,
       })
+      setUseNewCollection(false)
     }
 
     // Cleanup: отменяем обновление состояния при размонтировании
@@ -83,10 +109,26 @@ const AdminUpholsteryForm = () => {
     setSubmitting(true)
 
     try {
+      let collectionId = null
+
+      // Если выбрана новая коллекция, создаем или получаем её
+      if (useNewCollection && formData.new_collection_name.trim()) {
+        const collection = await getOrCreateCollectionByName(formData.new_collection_name.trim())
+        collectionId = collection?.id || null
+      } else if (!useNewCollection && formData.collection_id) {
+        collectionId = formData.collection_id
+      }
+
+      // Нормализуем цвет: убираем пробелы, приводим первую букву к заглавной
+      const normalizedColor = formData.color?.trim() 
+        ? formData.color.trim().charAt(0).toUpperCase() + formData.color.trim().slice(1).toLowerCase()
+        : null
+
       const variantData = {
         name: formData.name.trim(),
-        color: formData.color.trim() || null,
+        color: normalizedColor,
         image_url: formData.image_url,
+        collection_id: collectionId,
       }
 
       if (isEdit) {
@@ -163,13 +205,117 @@ const AdminUpholsteryForm = () => {
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Цвет
             </label>
-            <input
-              type="text"
-              value={formData.color}
-              onChange={(e) => setFormData({ ...formData, color: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-              placeholder="Например: Красный, Синий, Бежевый"
-            />
+            <div className="space-y-2">
+              <select
+                value={formData.color || ''}
+                onChange={(e) => {
+                  const selectedColor = e.target.value
+                  if (selectedColor === 'custom') {
+                    // Если выбрано "Другое", показываем текстовое поле
+                    setFormData({ ...formData, color: '', isCustomColor: true })
+                  } else {
+                    setFormData({ ...formData, color: selectedColor || null, isCustomColor: false })
+                  }
+                }}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+              >
+                <option value="">Не указан</option>
+                <option value="Белый">Белый</option>
+                <option value="Черный">Черный</option>
+                <option value="Серый">Серый</option>
+                <option value="Бежевый">Бежевый</option>
+                <option value="Коричневый">Коричневый</option>
+                <option value="Красный">Красный</option>
+                <option value="Синий">Синий</option>
+                <option value="Зеленый">Зеленый</option>
+                <option value="Желтый">Желтый</option>
+                <option value="Оранжевый">Оранжевый</option>
+                <option value="Фиолетовый">Фиолетовый</option>
+                <option value="Розовый">Розовый</option>
+                <option value="Голубой">Голубой</option>
+                <option value="Темно-синий">Темно-синий</option>
+                <option value="Темно-коричневый">Темно-коричневый</option>
+                <option value="Светло-серый">Светло-серый</option>
+                <option value="Темно-серый">Темно-серый</option>
+                <option value="Кремовый">Кремовый</option>
+                <option value="custom">Другое (указать вручную)</option>
+              </select>
+              {formData.isCustomColor && (
+                <input
+                  type="text"
+                  value={formData.color || ''}
+                  onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                  placeholder="Введите цвет вручную"
+                  autoFocus
+                />
+              )}
+            </div>
+            <p className="mt-1 text-xs text-gray-500">Опциональное поле. Выберите из списка или укажите свой вариант</p>
+          </div>
+
+          {/* Коллекция */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Коллекция
+            </label>
+            <div className="space-y-3">
+              <div className="flex items-center space-x-4">
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    checked={!useNewCollection}
+                    onChange={() => {
+                      setUseNewCollection(false)
+                      setFormData({ ...formData, new_collection_name: '' })
+                    }}
+                    className="mr-2"
+                  />
+                  <span className="text-sm text-gray-700">Выбрать существующую коллекцию</span>
+                </label>
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    checked={useNewCollection}
+                    onChange={() => {
+                      setUseNewCollection(true)
+                      setFormData({ ...formData, collection_id: null })
+                    }}
+                    className="mr-2"
+                  />
+                  <span className="text-sm text-gray-700">Создать новую коллекцию</span>
+                </label>
+              </div>
+
+              {!useNewCollection ? (
+                <select
+                  value={formData.collection_id || ''}
+                  onChange={(e) => setFormData({ ...formData, collection_id: e.target.value || null })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                  disabled={collectionsLoading}
+                >
+                  <option value="">Без коллекции</option>
+                  {collections.map((collection) => (
+                    <option key={collection.id} value={collection.id}>
+                      {collection.name}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <div>
+                  <input
+                    type="text"
+                    value={formData.new_collection_name}
+                    onChange={(e) => setFormData({ ...formData, new_collection_name: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                    placeholder="Введите название новой коллекции"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    Коллекция будет создана автоматически при сохранении варианта
+                  </p>
+                </div>
+              )}
+            </div>
             <p className="mt-1 text-xs text-gray-500">Опциональное поле</p>
           </div>
 

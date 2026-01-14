@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
+import { useGLTF } from '@react-three/drei'
 import Navbar from '@components/product/Navbar'
 import ModelViewer from '@components/3d/ModelViewer'
 import useProductsStore from '@store/productsStore'
@@ -11,13 +12,14 @@ import Loader from '@components/common/Loader'
 // Register ScrollTrigger plugin
 gsap.registerPlugin(ScrollTrigger)
 
-const ProductPage = () => {
-  const { id } = useParams()
-  const { currentProduct, products, loading, error, fetchProduct, fetchProducts } = useProductsStore()
+const Product = () => {
+  const { slug } = useParams()
+  const navigate = useNavigate()
+  const { currentProduct, products, loading, error, fetchProductBySlug, fetchProducts } = useProductsStore()
   const { variants: upholsteryVariants, fetchVariants } = useUpholsteryStore()
-  const [autoRotate, setAutoRotate] = useState(false)
+  const [autoRotate, setAutoRotate] = useState(true)
   const [zoomLevel, setZoomLevel] = useState(0) // 0 = нормальный, 1 = приближенный, -1 = отдаленный
-  const [modelScale, setModelScale] = useState(0.9) // Начальный scale для анимации (будет увеличиваться до 1.1)
+  const [modelScale, setModelScale] = useState(0.7) // Начальный scale для анимации (будет увеличиваться до 1)
   
   // Refs для анимаций
   const productSectionRef = useRef(null)
@@ -25,6 +27,10 @@ const ProductPage = () => {
   const modelContainerRef = useRef(null)
   const productInfoRefs = useRef([])
   const productContentBottomRef = useRef(null)
+  
+  // Refs для хранения анимаций и триггеров для правильной очистки
+  const animationsRef = useRef([])
+  const scrollTriggersRef = useRef([])
 
   // Скроллим вверх при монтировании страницы
   useEffect(() => {
@@ -52,20 +58,28 @@ const ProductPage = () => {
     }
   }, [fetchVariants, upholsteryVariants.length])
 
-  // Загружаем продукт при монтировании или изменении id
+  // Загружаем продукт при монтировании или изменении slug
   useEffect(() => {
-    if (!id) return
+    if (!slug) return
 
-    // Сначала проверяем, есть ли продукт в уже загруженном списке
-    const productFromList = products.find(p => p.id === id && p.status === 'published')
+    // Сначала проверяем, есть ли продукт в уже загруженном списке по slug
+    const productFromList = products.find(p => p.slug === slug && p.status === 'published')
     
     // Загружаем продукт только если его нет в списке или если это другой продукт
-    if (!productFromList || currentProduct?.id !== id) {
-      fetchProduct(id).catch(() => {
+    if (!productFromList || currentProduct?.slug !== slug) {
+      fetchProductBySlug(slug).catch(() => {
         // Ошибка уже обрабатывается в store
       })
     }
-  }, [id, fetchProduct]) // Убрали products и currentProduct из зависимостей, чтобы избежать лишних вызовов
+    // Убираем currentProduct?.slug из зависимостей, чтобы избежать бесконечного цикла
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slug, fetchProductBySlug])
+
+  // Сбрасываем автоповорот при смене модели (при изменении slug)
+  useEffect(() => {
+    // Включаем автоповорот при переходе на новую модель
+    setAutoRotate(true)
+  }, [slug])
 
   // Проверяем настройки пользователя для уменьшенного движения
   const prefersReducedMotion = useMemo(() => {
@@ -162,6 +176,10 @@ const ProductPage = () => {
             gsap.set(contentTop, { willChange: 'auto' })
           }
         })
+        if (anim.scrollTrigger) {
+          scrollTriggersRef.current.push(anim.scrollTrigger)
+        }
+        animationsRef.current.push(anim)
       }
 
       // Анимация 3D модели (увеличение и подкручивание)
@@ -170,7 +188,7 @@ const ProductPage = () => {
         gsap.set(modelContainer, { willChange: 'opacity' })
         
         // Анимируем контейнер (opacity)
-        gsap.to(modelContainer, {
+        const containerAnim = gsap.to(modelContainer, {
           opacity: 1,
           duration: 1.2,
           delay: 0.3,
@@ -185,15 +203,19 @@ const ProductPage = () => {
             gsap.set(modelContainer, { willChange: 'auto' })
           }
         })
+        if (containerAnim.scrollTrigger) {
+          scrollTriggersRef.current.push(containerAnim.scrollTrigger)
+        }
+        animationsRef.current.push(containerAnim)
 
         // Анимируем только scale модели через состояние
         // Используем объект-прокси для анимации значений
         const modelAnimation = {
-          scale: 0.9 // Начальный scale (будет увеличиваться до 1.1 - базовый размер)
+          scale: 0.7 // Начальный scale (будет увеличиваться до 1 - базовый размер)
         }
 
-        gsap.to(modelAnimation, {
-          scale: 1.1, // Конечный scale (базовый размер модели)
+        const modelScaleAnim = gsap.to(modelAnimation, {
+          scale: 1, // Конечный scale (базовый размер модели)
           duration: 1.2,
           delay: 0.3,
           ease: 'power3.out',
@@ -203,7 +225,7 @@ const ProductPage = () => {
           },
           onComplete: function() {
             // Убеждаемся, что после анимации модель имеет правильный размер
-            setModelScale(1.1)
+            setModelScale(1)
           },
           scrollTrigger: isSectionVisible ? undefined : {
             trigger: productSectionRef.current,
@@ -211,6 +233,10 @@ const ProductPage = () => {
             toggleActions: 'play none none none'
           }
         })
+        if (modelScaleAnim.scrollTrigger) {
+          scrollTriggersRef.current.push(modelScaleAnim.scrollTrigger)
+        }
+        animationsRef.current.push(modelScaleAnim)
       }
 
       // Анимация информации о продукте (stagger)
@@ -218,7 +244,7 @@ const ProductPage = () => {
         // Добавляем will-change для оптимизации
         gsap.set(productInfos, { willChange: 'opacity, transform' })
         
-        gsap.to(productInfos, {
+        const productInfosAnim = gsap.to(productInfos, {
           opacity: 1,
           x: 0,
           duration: 0.8,
@@ -235,6 +261,10 @@ const ProductPage = () => {
             gsap.set(productInfos, { willChange: 'auto' })
           }
         })
+        if (productInfosAnim.scrollTrigger) {
+          scrollTriggersRef.current.push(productInfosAnim.scrollTrigger)
+        }
+        animationsRef.current.push(productInfosAnim)
       }
 
       // Анимация нижней части (кнопки управления)
@@ -242,7 +272,7 @@ const ProductPage = () => {
         // Добавляем will-change для оптимизации
         gsap.set(contentBottom, { willChange: 'opacity, transform' })
         
-        gsap.to(contentBottom, {
+        const contentBottomAnim = gsap.to(contentBottom, {
           opacity: 1,
           y: 0,
           duration: 0.8,
@@ -258,17 +288,39 @@ const ProductPage = () => {
             gsap.set(contentBottom, { willChange: 'auto' })
           }
         })
+        if (contentBottomAnim.scrollTrigger) {
+          scrollTriggersRef.current.push(contentBottomAnim.scrollTrigger)
+        }
+        animationsRef.current.push(contentBottomAnim)
       }
     }, 150)
 
     return () => {
       clearTimeout(timeoutId)
-      // Очистка ScrollTrigger
+      
+      // Очистка всех анимаций
+      animationsRef.current.forEach(anim => {
+        if (anim && anim.kill) {
+          anim.kill()
+        }
+      })
+      animationsRef.current = []
+      
+      // Очистка всех ScrollTrigger
+      scrollTriggersRef.current.forEach(trigger => {
+        if (trigger && trigger.kill) {
+          trigger.kill()
+        }
+      })
+      scrollTriggersRef.current = []
+      
+      // Дополнительная очистка всех ScrollTrigger, связанных с этой секцией
       ScrollTrigger.getAll().forEach(trigger => {
         if (trigger.vars?.trigger === productSectionRef.current) {
           trigger.kill()
         }
       })
+      
       // Убираем will-change при размонтировании
       const elements = [
         productContentTopRef.current,
@@ -311,6 +363,31 @@ const ProductPage = () => {
     const nextIndex = (currentIndex + 1) % publishedProducts.length
     return publishedProducts[nextIndex] || null
   }, [currentProduct?.id, publishedProducts])
+
+  // Предзагрузка следующей модели
+  useEffect(() => {
+    if (nextProduct?.model_url) {
+      // Предзагружаем следующую модель только если она отличается от текущей
+      const shouldPreload = !currentProduct?.model_url || 
+                           nextProduct.model_url !== currentProduct.model_url
+      
+      if (shouldPreload) {
+        // Предзагружаем следующую модель для быстрой загрузки при переходе
+        // useGLTF.preload - метод для предзагрузки вне Canvas
+        try {
+          // Проверяем, что метод preload существует
+          if (typeof useGLTF.preload === 'function') {
+            useGLTF.preload(nextProduct.model_url)
+          } else {
+            console.warn('useGLTF.preload не доступен. Предзагрузка модели пропущена.')
+          }
+        } catch (error) {
+          // Игнорируем ошибки предзагрузки (модель может быть недоступна)
+          console.debug('Не удалось предзагрузить следующую модель:', error)
+        }
+      }
+    }
+  }, [nextProduct?.model_url, currentProduct?.model_url])
   
   // Массив материалов для данного продукта
   const materials = [
@@ -347,14 +424,14 @@ const ProductPage = () => {
   }
 
   // Показываем ошибку только если есть ошибка или продукт не найден после загрузки
-  if ((error || (!currentProduct && !loading)) && id) {
+  if ((error || (!currentProduct && !loading)) && slug) {
     return (
       <div className="product-page relative bg-main-bg">
         <Navbar />
         <div className="padding-global" style={{ paddingTop: 'calc(var(--navbar-height) + 3.5rem)' }}>
           <p className="text-red-500">
             Ошибка загрузки продукта: {error || 'Продукт не найден'}
-            {id && ` (ID: ${id})`}
+            {slug && ` (slug: ${slug})`}
           </p>
           <Link to="/products" className="text-blue-600 hover:text-blue-800 mt-4 inline-block">
             Вернуться в каталог
@@ -365,22 +442,51 @@ const ProductPage = () => {
   }
 
   return (
-        <div className="product-page relative bg-main-bg">
+    <div className="product-page relative bg-main-bg">
       <Navbar />
       
-      {/* Product Section - 100vh */}
-      <section ref={productSectionRef} className="product-section flex flex-col" style={{ minHeight: '100vh' }}>
-        <div className="padding-global flex-1 flex flex-col">
-          <div className="container-large flex-1 flex flex-col">
-            <div className="product-content w-full flex-1 flex flex-col justify-between" style={{ 
-              display: 'flex',
-              flexDirection: 'column',
-              paddingTop: 'calc(86px + var(--navbar-height))',
-              paddingBottom: '40px'
-            }}>
+      {/* Product Section - Fullscreen 3D Scene */}
+      <section ref={productSectionRef} className="product-section relative" style={{ minHeight: '100vh', paddingTop: 'var(--navbar-height)' }}>
+        <div className="padding-global">
+          <div className="container-large relative" style={{ height: 'calc(100vh - var(--navbar-height))' }}>
             
-            {/* Product Content Top */}
-            <div ref={productContentTopRef} className="product-content-top w-full inline-flex justify-between items-start">
+            {/* 3D Model Container - Fullscreen */}
+            <div 
+              ref={modelContainerRef} 
+              className="product-3d-scene absolute inset-0"
+              style={{ height: '100%' }}
+            >
+              {currentProduct?.model_url ? (
+                <ModelViewer 
+                  modelPath={currentProduct.model_url}
+                  enableControls={true}
+                  autoRotate={autoRotate}
+                  onUserInteraction={() => setAutoRotate(false)}
+                  onAutoRotateEnd={() => setAutoRotate(false)}
+                  zoomLevel={zoomLevel}
+                  cameraPosition={[0, 0.5, 3]}
+                  modelRotation={[0, -0.15, 0]}
+                  scale={modelScale}
+                />
+              ) : (
+                <div className="text-second-text text-sm flex items-center justify-center h-full" role="status" aria-live="polite">
+                  3D модель не загружена
+                </div>
+              )}
+            </div>
+            
+            {/* Product Content Top - Absolute Overlay */}
+            <div 
+              ref={productContentTopRef} 
+              className="product-content-top absolute inline-flex justify-between items-start"
+              style={{ 
+                top: '40px',
+                left: 0,
+                right: 0,
+                width: '100%',
+                zIndex: 10
+              }}
+            >
               {/* Вернуться в каталог */}
               <Link 
                 to="/products" 
@@ -394,12 +500,12 @@ const ProductPage = () => {
               <div className="product-titles inline-flex flex-col justify-start items-center gap-0.5">
                 {/* Subtitle */}
                 {currentProduct?.type && (
-                  <p 
-                    className="text-[14px] text-second-text uppercase"
-                    style={{ fontWeight: 450 }}
-                  >
+                <p 
+                  className="text-[14px] text-second-text uppercase"
+                  style={{ fontWeight: 450 }}
+                >
                     {currentProduct.type}
-                  </p>
+                </p>
                 )}
 
                 {/* Product Name */}
@@ -411,7 +517,19 @@ const ProductPage = () => {
                 </h1>
 
                 {/* Product Materials Wrap */}
-                <div className="product-materials-wrap inline-flex justify-start items-center gap-2.5">
+                <div 
+                  className="product-materials-wrap inline-flex justify-start items-center gap-2.5 cursor-pointer hover:opacity-80 transition-opacity"
+                  onClick={() => navigate('/upholstery')}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      navigate('/upholstery')
+                    }
+                  }}
+                  aria-label="Перейти к вариантам обивки кресел"
+                >
                   {/* Materials */}
                   <div className="materials w-7 h-7 relative">
                     {/* Border circle */}
@@ -435,13 +553,13 @@ const ProductPage = () => {
 
               {/* Следующая модель */}
               {nextProduct ? (
-                <Link 
-                  to={`/product/${nextProduct.id}`}
-                  className="text-[14px] uppercase text-main-text hover:text-second-text transition-colors"
-                  style={{ fontWeight: 450, padding: 0 }}
-                >
-                  Следующая модель
-                </Link>
+              <Link 
+                  to={`/product/${nextProduct.slug || nextProduct.id}`}
+                className="text-[14px] uppercase text-main-text hover:text-second-text transition-colors"
+                style={{ fontWeight: 450, padding: 0 }}
+              >
+                Следующая модель
+              </Link>
               ) : (
                 <div className="text-[14px] uppercase text-second-text" style={{ fontWeight: 450, padding: 0 }}>
                   Следующая модель
@@ -449,33 +567,16 @@ const ProductPage = () => {
               )}
             </div>
 
-            {/* Product Content Mid */}
-            <div className="product-content-mid self-stretch flex-1 grid gap-4 items-center" style={{ gridTemplateColumns: '25% 50% 25%' }}>
-              {/* Колонка 1 - пустая (25%) */}
-              <div></div>
-
-                     {/* Колонка 2 - 3D модель (50%) */}
-                     <div ref={modelContainerRef} className="3d-model-container h-full rounded-lg flex items-center justify-center">
-                       {currentProduct?.model_url ? (
-                         <ModelViewer 
-                           modelPath={currentProduct.model_url}
-                           enableControls={true}
-                           autoRotate={autoRotate}
-                           onUserInteraction={() => setAutoRotate(false)}
-                           zoomLevel={zoomLevel}
-                           cameraPosition={[0, 1.8, 3]}
-                           modelRotation={[0, -0.15, 0]} // Базовое положение модели
-                           scale={modelScale} // Анимируемый scale
-                         />
-                       ) : (
-                         <div className="text-second-text text-sm" role="status" aria-live="polite">
-                           3D модель не загружена
-                         </div>
-                       )}
-                     </div>
-
-              {/* Колонка 3 - Информация о продукте (25%) */}
-              <div className="inline-flex flex-col justify-start items-start gap-4">
+            {/* Product Content Mid - Absolute Overlay Right */}
+            <div 
+              className="product-content-mid absolute inline-flex flex-col justify-start items-start gap-4"
+              style={{
+                right: 'clamp(1rem, 3vw, 2.5rem)',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                zIndex: 10
+              }}
+            >
                   {/* Product Info 1 */}
                   <div ref={el => productInfoRefs.current[0] = el} className="product-info self-stretch inline-flex flex-col justify-start items-start gap-0.5">
                     <p className="text-[14px] text-second-text uppercase" style={{ fontWeight: 450 }}>
@@ -515,11 +616,19 @@ const ProductPage = () => {
                       {currentProduct?.in_stock || 'не указано'}
                     </p>
                   </div>
-              </div>
             </div>
 
-                   {/* Product Content Bottom */}
-                   <div ref={productContentBottomRef} className="product-content-bottom self-stretch p-2.5 inline-flex justify-center items-center gap-2.5 overflow-hidden">
+            {/* Product Content Bottom - Absolute Overlay */}
+            <div 
+              ref={productContentBottomRef} 
+              className="product-content-bottom absolute p-2.5 inline-flex justify-center items-center gap-2.5 overflow-hidden"
+              style={{
+                bottom: '40px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                zIndex: 10
+              }}
+            >
                      <div className="inline-flex justify-start items-center gap-4">
                        {/* 3D Rotate Icon */}
                        <button
@@ -570,9 +679,8 @@ const ProductPage = () => {
                          </svg>
                        </button>
                      </div>
-                   </div>
-
             </div>
+
           </div>
         </div>
       </section>
@@ -580,5 +688,5 @@ const ProductPage = () => {
   )
 }
 
-export default ProductPage
+export default Product
 

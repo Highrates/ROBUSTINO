@@ -346,7 +346,8 @@ const Projects = () => {
                                     onClick={(e) => {
                                       e.preventDefault()
                                       e.stopPropagation()
-                                      window.location.href = `/product/${project.product_id}`
+                                      const productSlug = project.products?.slug || project.product_id
+                                      window.location.href = `/product/${productSlug}`
                                     }}
                                     className="project-item-link"
                                   >
@@ -470,7 +471,8 @@ const Projects = () => {
                                 onClick={(e) => {
                                   e.preventDefault()
                                   e.stopPropagation()
-                                  window.location.href = `/product/${selectedProject.product_id}`
+                                  const productSlug = selectedProject.products?.slug || selectedProject.product_id
+                                  window.location.href = `/product/${productSlug}`
                                 }}
                                 className="project-modal-info-value project-modal-link"
                               >

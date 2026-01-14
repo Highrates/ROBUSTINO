@@ -738,6 +738,115 @@ h1, h2, h3, h4, h5, h6 {
     }
   }
 
+  /* All upholstery section */
+  .all-upholstery {
+    min-height: 100vh;
+  }
+
+  .all-upholstery-content {
+    display: flex;
+    flex-direction: column;
+    padding-top: calc(86px + var(--navbar-height));
+    padding-bottom: 124px;
+    gap: 124px;
+  }
+
+  .all-upholstery-title-wrapper {
+    position: relative;
+    display: inline-flex;
+    align-items: flex-start;
+    justify-content: center;
+    width: 100%;
+  }
+
+  .upholstery-grid .upholstery-card {
+    opacity: 0; /* Начальное состояние - скрыта, будет появляться через анимацию */
+  }
+
+  /* All upholstery title */
+  .all-upholstery-content .hero-text {
+    font-family: 'Commissioner', sans-serif;
+    font-weight: 450;
+    letter-spacing: -0.04em;
+    text-align: center;
+    margin: 0;
+  }
+
+  .all-upholstery-count {
+    font-family: 'Commissioner', sans-serif;
+    font-size: 32px;
+    font-weight: 450;
+    color: #363636;
+    margin-left: 0.5em;
+  }
+
+  /* Color filter */
+  .upholstery-color-filter {
+    /* gap задан inline в компоненте */
+  }
+
+  .upholstery-color-circle {
+    transition: transform 0.2s ease, opacity 0.2s ease;
+  }
+
+  .upholstery-color-circle:hover {
+    transform: scale(1.1);
+  }
+
+  .upholstery-color-circle:active {
+    transform: scale(0.95);
+  }
+
+  .upholstery-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 86px;
+    width: 100%; /* Занимает всю ширину контейнера */
+    /* Поддержка order для сортировки выбранных карточек */
+  }
+  
+  .upholstery-grid .upholstery-card {
+    /* order будет задан inline через style */
+  }
+
+  .upholstery-grid .upholstery-cover-image {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+  }
+
+  .upholstery-grid .upholstery-title {
+    font-family: 'Commissioner', sans-serif;
+    font-size: 14px;
+    font-weight: 450;
+    color: #363636;
+    margin: 0;
+    text-transform: uppercase;
+    line-height: 1.4;
+  }
+
+  /* Responsive: 3 columns on medium screens */
+  @media (max-width: 1024px) {
+    .upholstery-grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  /* Responsive: 2 columns on small screens */
+  @media (max-width: 768px) {
+    .upholstery-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  /* Responsive: 1 column on mobile */
+  @media (max-width: 640px) {
+    .upholstery-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
   /* All projects section */
   .all-projects-content {
     display: flex;
@@ -996,7 +1105,7 @@ h1, h2, h3, h4, h5, h6 {
   .project-modal-content {
     display: flex;
     flex-direction: row;
-    gap: max(86px, auto);
+    gap: 86px;
     min-height: 60%;
     height: auto;
     padding-top: 56px;

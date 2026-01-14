@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { getArticles, getArticle, createArticle, updateArticle, deleteArticle, updateArticleOrder } from '@utils/api'
+import { getArticles, getArticle, getArticleBySlug, createArticle, updateArticle, deleteArticle, updateArticleOrder } from '@utils/api'
 
 /**
  * Articles store using Zustand
@@ -54,7 +54,7 @@ const useArticlesStore = create((set, get) => ({
     }
   },
 
-  // Fetch single article
+  // Fetch single article by ID
   fetchArticle: async (id) => {
     const state = get()
     
@@ -83,6 +83,37 @@ const useArticlesStore = create((set, get) => ({
         return
       }
       set({ error: error.message, loading: false, fetchAbortFlag: null })
+    }
+  },
+
+  // Fetch single article by slug
+  fetchArticleBySlug: async (slug) => {
+    const state = get()
+    
+    // Отменяем предыдущий запрос, если он еще выполняется
+    if (state.fetchAbortFlag) {
+      state.fetchAbortFlag.cancelled = true
+    }
+
+    // Создаем новый флаг отмены и очищаем предыдущую статью
+    const abortFlag = { cancelled: false }
+    set({ loading: true, error: null, fetchAbortFlag: abortFlag, currentArticle: null })
+
+    try {
+      const article = await getArticleBySlug(slug)
+      
+      // Проверяем, не был ли запрос отменен
+      if (abortFlag.cancelled) {
+        return
+      }
+
+      set({ currentArticle: article, loading: false, fetchAbortFlag: null })
+    } catch (error) {
+      // Игнорируем ошибки отмененных запросов
+      if (abortFlag.cancelled) {
+        return
+      }
+      set({ error: error.message, loading: false, fetchAbortFlag: null, currentArticle: null })
     }
   },
 

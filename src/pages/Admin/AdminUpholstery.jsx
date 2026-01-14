@@ -11,6 +11,30 @@ const AdminUpholstery = () => {
     fetchVariants()
   }, [fetchVariants])
 
+  // Группируем варианты по коллекциям
+  const groupedVariants = variants.reduce((acc, variant) => {
+    const collection = variant.upholstery_collections
+    const collectionName = collection?.name || 'Без коллекции'
+    const collectionId = collection?.id || 'no-collection'
+    
+    if (!acc[collectionId]) {
+      acc[collectionId] = {
+        id: collectionId,
+        name: collectionName,
+        variants: []
+      }
+    }
+    acc[collectionId].variants.push(variant)
+    return acc
+  }, {})
+
+  const collectionsArray = Object.values(groupedVariants).sort((a, b) => {
+    // Сначала коллекции с названиями, потом "Без коллекции"
+    if (a.name === 'Без коллекции') return 1
+    if (b.name === 'Без коллекции') return -1
+    return a.name.localeCompare(b.name)
+  })
+
   const handleDelete = async (id, name) => {
     if (!window.confirm(`Вы уверены, что хотите удалить вариант обивки "${name}"?`)) {
       return
@@ -41,12 +65,20 @@ const AdminUpholstery = () => {
       <div className="admin-upholstery">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Варианты обивок</h1>
-          <Link
-            to="/admin/upholstery/new"
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium"
-          >
-            + Создать вариант
-          </Link>
+          <div className="flex space-x-3">
+            <Link
+              to="/admin/collections"
+              className="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition font-medium"
+            >
+              Управление коллекциями
+            </Link>
+            <Link
+              to="/admin/upholstery/new"
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium"
+            >
+              + Создать вариант
+            </Link>
+          </div>
         </div>
 
         {loading && (
@@ -63,57 +95,69 @@ const AdminUpholstery = () => {
         )}
 
         {!loading && !error && (
-          <div className="bg-white rounded-lg shadow overflow-hidden">
+          <div className="space-y-8">
             {variants.length === 0 ? (
-              <div className="p-6 text-center">
+              <div className="bg-white rounded-lg shadow p-6 text-center">
                 <p className="text-gray-600 mb-2">Варианты обивок не найдены</p>
                 <p className="text-sm text-gray-500">
                   Нажмите "Создать вариант" для добавления нового варианта обивки
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6">
-                {variants.map((variant) => (
-                  <div key={variant.id} className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow">
-                    {variant.image_url && (
-                      <div className="aspect-video bg-gray-100 overflow-hidden">
-                        <img
-                          src={variant.image_url}
-                          alt={variant.name}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                    )}
-                    <div className="p-4">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                        {variant.name}
-                      </h3>
-                      {variant.color && (
-                        <p className="text-sm text-gray-600 mb-4">
-                          Цвет: <span className="font-medium">{variant.color}</span>
-                        </p>
-                      )}
-                      <div className="flex space-x-2">
-                        <Link
-                          to={`/admin/upholstery/${variant.id}/edit`}
-                          className="flex-1 px-4 py-2 text-center text-blue-600 hover:text-blue-900 text-sm font-medium border border-blue-600 rounded-lg hover:bg-blue-50 transition"
-                        >
-                          Редактировать
-                        </Link>
-                        <button
-                          onClick={() => handleDelete(variant.id, variant.name)}
-                          disabled={deletingId === variant.id}
-                          className={`flex-1 px-4 py-2 text-red-600 hover:text-red-900 text-sm font-medium border border-red-600 rounded-lg hover:bg-red-50 transition ${
-                            deletingId === variant.id ? 'opacity-50 cursor-not-allowed' : ''
-                          }`}
-                        >
-                          {deletingId === variant.id ? 'Удаление...' : 'Удалить'}
-                        </button>
-                      </div>
-                    </div>
+              collectionsArray.map((collection) => (
+                <div key={collection.id} className="bg-white rounded-lg shadow overflow-hidden">
+                  <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
+                    <h2 className="text-xl font-semibold text-gray-900">
+                      {collection.name}
+                      <span className="ml-2 text-sm font-normal text-gray-500">
+                        ({collection.variants.length} {collection.variants.length === 1 ? 'вариант' : collection.variants.length < 5 ? 'варианта' : 'вариантов'})
+                      </span>
+                    </h2>
                   </div>
-                ))}
-              </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6">
+                    {collection.variants.map((variant) => (
+                      <div key={variant.id} className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow">
+                        {variant.image_url && (
+                          <div className="aspect-video bg-gray-100 overflow-hidden">
+                            <img
+                              src={variant.image_url}
+                              alt={variant.name}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        )}
+                        <div className="p-4">
+                          <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                            {variant.name}
+                          </h3>
+                          {variant.color && (
+                            <p className="text-sm text-gray-600 mb-4">
+                              Цвет: <span className="font-medium">{variant.color}</span>
+                            </p>
+                          )}
+                          <div className="flex space-x-2">
+                            <Link
+                              to={`/admin/upholstery/${variant.id}/edit`}
+                              className="flex-1 px-4 py-2 text-center text-blue-600 hover:text-blue-900 text-sm font-medium border border-blue-600 rounded-lg hover:bg-blue-50 transition"
+                            >
+                              Редактировать
+                            </Link>
+                            <button
+                              onClick={() => handleDelete(variant.id, variant.name)}
+                              disabled={deletingId === variant.id}
+                              className={`flex-1 px-4 py-2 text-red-600 hover:text-red-900 text-sm font-medium border border-red-600 rounded-lg hover:bg-red-50 transition ${
+                                deletingId === variant.id ? 'opacity-50 cursor-not-allowed' : ''
+                              }`}
+                            >
+                              {deletingId === variant.id ? 'Удаление...' : 'Удалить'}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))
             )}
           </div>
         )}

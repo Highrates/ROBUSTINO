@@ -195,7 +195,7 @@ const Articles = () => {
                   {publishedArticles.map((article) => (
                     <Link
                       key={article.id}
-                      to={`/article/${article.id}`}
+                      to={`/article/${article.slug || article.id}`}
                       className="article flex flex-col gap-4"
                     >
                       <p className="product-type">

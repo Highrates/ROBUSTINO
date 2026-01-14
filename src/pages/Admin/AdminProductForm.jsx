@@ -4,7 +4,7 @@ import AdminLayout from '@components/admin/AdminLayout'
 import FileUpload from '@components/admin/FileUpload'
 import ImageUpload from '@components/admin/ImageUpload'
 import useProductsStore from '@store/productsStore'
-import { getProjects, getProductProjects, setProductProjects } from '@utils/api'
+import { getProjects, getProductProjects, setProductProjects, getProducts } from '@utils/api'
 
 // Генерация приватного токена для доступа по ссылке
 const generatePrivateToken = () => {
@@ -83,21 +83,26 @@ const AdminProductForm = () => {
     weight_kg: '',
     in_stock: '',
     model_url: null,
-    additional_models: [],
     images: [],
     status: 'draft',
     private_token: null, // Приватный токен для доступа по ссылке
+    parent_product_id: null, // ID основной модели (для конфигураций)
+    configurations: [], // Массив ID товаров-конфигураций
   })
   // Сохраняем токен при смене статуса, чтобы можно было восстановить
   const [savedPrivateToken, setSavedPrivateToken] = useState(null)
 
   const [selectedProjects, setSelectedProjects] = useState([])
   const [availableProjects, setAvailableProjects] = useState([])
+  const [availableProducts, setAvailableProducts] = useState([]) // Все товары для выбора конфигураций
   const [errors, setErrors] = useState({})
   const [submitting, setSubmitting] = useState(false)
   const [projectsDropdownOpen, setProjectsDropdownOpen] = useState(false)
   const [projectsSearch, setProjectsSearch] = useState('')
   const projectsDropdownRef = useRef(null)
+  const [configurationsDropdownOpen, setConfigurationsDropdownOpen] = useState(false)
+  const [configurationsSearch, setConfigurationsSearch] = useState('')
+  const configurationsDropdownRef = useRef(null)
 
   // Загружаем проекты для выбора
   useEffect(() => {
@@ -112,6 +117,36 @@ const AdminProductForm = () => {
     loadProjects()
   }, [])
 
+  // Загружаем товары для выбора конфигураций
+  useEffect(() => {
+    let cancelled = false
+    
+    const loadProducts = async () => {
+      try {
+        // Используем getProducts напрямую из API для получения всех товаров (включая draft)
+        const products = await getProducts()
+        // Проверяем, не был ли компонент размонтирован
+        if (!cancelled) {
+          // Исключаем текущий товар из списка доступных
+          const filteredProducts = isEdit && id 
+            ? products.filter(p => p.id !== id)
+            : products
+          setAvailableProducts(filteredProducts)
+        }
+      } catch (error) {
+        if (!cancelled) {
+          console.error('Ошибка загрузки товаров:', error)
+        }
+      }
+    }
+    loadProducts()
+    
+    // Cleanup: отменяем обновление состояния при размонтировании
+    return () => {
+      cancelled = true
+    }
+  }, [isEdit, id])
+
   // Закрытие выпадающего списка при клике вне его
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -121,21 +156,32 @@ const AdminProductForm = () => {
       ) {
         setProjectsDropdownOpen(false)
       }
+      if (
+        configurationsDropdownRef.current &&
+        !configurationsDropdownRef.current.contains(event.target)
+      ) {
+        setConfigurationsDropdownOpen(false)
+      }
     }
 
-    if (projectsDropdownOpen) {
+    if (projectsDropdownOpen || configurationsDropdownOpen) {
       document.addEventListener('mousedown', handleClickOutside)
       return () => {
         document.removeEventListener('mousedown', handleClickOutside)
       }
     }
-  }, [projectsDropdownOpen])
+  }, [projectsDropdownOpen, configurationsDropdownOpen])
 
   // Закрытие по Escape
   useEffect(() => {
     const handleEscape = (event) => {
-      if (event.key === 'Escape' && projectsDropdownOpen) {
-        setProjectsDropdownOpen(false)
+      if (event.key === 'Escape') {
+        if (projectsDropdownOpen) {
+          setProjectsDropdownOpen(false)
+        }
+        if (configurationsDropdownOpen) {
+          setConfigurationsDropdownOpen(false)
+        }
       }
     }
 
@@ -143,7 +189,7 @@ const AdminProductForm = () => {
     return () => {
       document.removeEventListener('keydown', handleEscape)
     }
-  }, [projectsDropdownOpen])
+  }, [projectsDropdownOpen, configurationsDropdownOpen])
 
   // Загружаем товар для редактирования
   useEffect(() => {
@@ -179,11 +225,34 @@ const AdminProductForm = () => {
         weight_kg: currentProduct.weight_kg || '',
         in_stock: currentProduct.in_stock || '',
         model_url: currentProduct.model_url || null,
-        additional_models: currentProduct.additional_models || [],
         images: currentProduct.images || [],
         status: currentProduct.status || 'draft',
         private_token: currentProduct.private_token || null,
+        parent_product_id: currentProduct.parent_product_id || null,
+        configurations: [], // Загрузим отдельно
       })
+
+      // Загружаем конфигурации (товары, у которых parent_product_id = текущий товар)
+      const loadConfigurations = async () => {
+        try {
+          const { supabase } = await import('@/config/supabase')
+          const { data, error } = await supabase
+            .from('products')
+            .select('id')
+            .eq('parent_product_id', currentProduct.id)
+          
+          if (!error && data) {
+            setFormData(prev => ({
+              ...prev,
+              configurations: data.map(p => p.id)
+            }))
+          }
+        } catch (error) {
+          console.error('Ошибка загрузки конфигураций:', error)
+        }
+      }
+      
+      loadConfigurations()
       // Сохраняем существующий токен при загрузке товара
       if (currentProduct.private_token) {
         setSavedPrivateToken(currentProduct.private_token)
@@ -260,7 +329,7 @@ const AdminProductForm = () => {
         weight_kg: formData.weight_kg ? parseFloat(formData.weight_kg) : null,
         in_stock: formData.in_stock || null,
         model_url: formData.model_url || null,
-        additional_models: formData.additional_models || [],
+        parent_product_id: formData.parent_product_id || null,
         images: formData.images || [],
         status: formData.status,
         private_token: finalToken,
@@ -296,6 +365,37 @@ const AdminProductForm = () => {
         await setProductProjects(productId, selectedProjects)
       }
 
+      // Сохраняем конфигурации (обновляем parent_product_id у выбранных товаров)
+      if (productId && formData.configurations.length > 0) {
+        try {
+          const { supabase } = await import('@/config/supabase')
+          // Сначала сбрасываем parent_product_id у всех товаров, которые были конфигурациями этого товара
+          await supabase
+            .from('products')
+            .update({ parent_product_id: null })
+            .eq('parent_product_id', productId)
+          
+          // Затем устанавливаем parent_product_id для выбранных конфигураций
+          await supabase
+            .from('products')
+            .update({ parent_product_id: productId })
+            .in('id', formData.configurations)
+        } catch (error) {
+          console.error('Ошибка сохранения конфигураций:', error)
+        }
+      } else if (productId && formData.configurations.length === 0) {
+        // Если конфигураций нет, сбрасываем все связи
+        try {
+          const { supabase } = await import('@/config/supabase')
+          await supabase
+            .from('products')
+            .update({ parent_product_id: null })
+            .eq('parent_product_id', productId)
+        } catch (error) {
+          console.error('Ошибка сброса конфигураций:', error)
+        }
+      }
+
       console.log('Товар успешно сохранен, обновление списка и переход')
       // Обновляем список товаров перед переходом
       await fetchProducts()
@@ -323,20 +423,24 @@ const AdminProductForm = () => {
     }
   }
 
-  const handleAdditionalModelAdd = (url) => {
-    if (formData.additional_models.length < 5) {
-      setFormData({
-        ...formData,
-        additional_models: [...formData.additional_models, url],
-      })
-    }
+  // Обработчики для работы с конфигурациями
+  const handleConfigurationToggle = (productId) => {
+    setFormData(prev => {
+      const isSelected = prev.configurations.includes(productId)
+      return {
+        ...prev,
+        configurations: isSelected
+          ? prev.configurations.filter(id => id !== productId)
+          : [...prev.configurations, productId]
+      }
+    })
   }
 
-  const handleAdditionalModelRemove = (index) => {
-    setFormData({
-      ...formData,
-      additional_models: formData.additional_models.filter((_, i) => i !== index),
-    })
+  const handleConfigurationRemove = (productId) => {
+    setFormData(prev => ({
+      ...prev,
+      configurations: prev.configurations.filter(id => id !== productId)
+    }))
   }
 
   if (isEdit && loading && !currentProduct) {
@@ -482,7 +586,7 @@ const AdminProductForm = () => {
             </select>
           </div>
 
-          {/* Основная 3D модель */}
+          {/* 3D модель */}
           <div>
             <FileUpload
               bucket="models"
@@ -491,42 +595,178 @@ const AdminProductForm = () => {
               maxSize={50 * 1024 * 1024}
               value={formData.model_url}
               onChange={(url) => setFormData({ ...formData, model_url: url })}
-              label="Основная 3D модель"
+              label="3D модель"
             />
           </div>
 
-          {/* Еще конфигурации (дополнительные 3D модели) */}
+          {/* Основная модель (для конфигураций) */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Еще конфигурации (максимум 5)
+              Основная модель (опционально)
             </label>
-            {formData.additional_models.map((url, index) => (
-              <div key={index} className="mb-2 flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <span className="text-sm text-gray-700">Модель {index + 1}</span>
-                <button
-                  type="button"
-                  onClick={() => handleAdditionalModelRemove(index)}
-                  className="text-red-600 hover:text-red-800 text-sm"
-                >
-                  Удалить
-                </button>
-              </div>
-            ))}
-            {formData.additional_models.length < 5 && (
-              <FileUpload
-                bucket="models"
-                pathPrefix="products/models"
-                accept=".glb"
-                maxSize={50 * 1024 * 1024}
-                value={null}
-                onChange={handleAdditionalModelAdd}
-                label=""
-              />
+            <select
+              value={formData.parent_product_id || ''}
+              onChange={(e) => {
+                const newParentId = e.target.value || null
+                setFormData({ 
+                  ...formData, 
+                  parent_product_id: newParentId,
+                  // Если выбрана основная модель (стали конфигурацией), очищаем список конфигураций
+                  configurations: newParentId ? [] : formData.configurations
+                })
+              }}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+            >
+              <option value="">Нет (это основная модель)</option>
+              {availableProducts
+                .filter(p => {
+                  // Исключаем текущий товар
+                  if (p.id === id) return false
+                  // Показываем только основные модели (у которых parent_product_id = NULL)
+                  // Исключаем конфигурации, чтобы избежать многоуровневых конфигураций
+                  if (p.parent_product_id) return false
+                  return true
+                })
+                .map(product => (
+                  <option key={product.id} value={product.id}>
+                    {product.name} {product.type ? `(${product.type})` : ''}
+                  </option>
+                ))}
+            </select>
+            {availableProducts.length === 0 && (
+              <p className="text-sm text-gray-500 mt-1">
+                Сначала создайте товары в разделе "Товары"
+              </p>
             )}
-            {formData.additional_models.length >= 5 && (
-              <p className="text-sm text-gray-500">Достигнут лимит в 5 дополнительных моделей</p>
-            )}
+            <p className="text-sm text-gray-500 mt-1">
+              Выберите основную модель, если этот товар является её конфигурацией
+            </p>
           </div>
+
+          {/* Конфигурации - показываем только для основных моделей */}
+          {!formData.parent_product_id && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Конфигурации
+              </label>
+            <div className="relative" ref={configurationsDropdownRef}>
+              <button
+                type="button"
+                onClick={() => setConfigurationsDropdownOpen(!configurationsDropdownOpen)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-left flex items-center justify-between"
+              >
+                <span className="text-gray-700">
+                  {formData.configurations.length > 0
+                    ? `Выбрано: ${formData.configurations.length}`
+                    : 'Выберите товары-конфигурации'}
+                </span>
+                <svg
+                  className={`w-5 h-5 transition-transform ${configurationsDropdownOpen ? 'rotate-180' : ''}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              
+              {configurationsDropdownOpen && (
+                <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                  <input
+                    type="text"
+                    placeholder="Поиск товаров..."
+                    value={configurationsSearch}
+                    onChange={(e) => setConfigurationsSearch(e.target.value)}
+                    className="w-full px-4 py-2 border-b border-gray-200 focus:outline-none"
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                  <div className="p-2">
+                    {availableProducts.length === 0 ? (
+                      <p className="text-sm text-gray-500 p-2">
+                        Сначала создайте товары в разделе "Товары"
+                      </p>
+                    ) : (
+                      <>
+                        {availableProducts
+                          .filter(p => {
+                            // Исключаем текущий товар
+                            if (p.id === id) return false
+                            // Исключаем уже выбранные конфигурации (они показываются отдельно)
+                            if (formData.configurations.includes(p.id)) return false
+                            // Исключаем товары, которые уже являются конфигурациями других товаров
+                            if (p.parent_product_id && p.parent_product_id !== id) return false
+                            // Фильтр по поиску
+                            if (configurationsSearch) {
+                              const search = configurationsSearch.toLowerCase()
+                              return p.name.toLowerCase().includes(search) || 
+                                     (p.type && p.type.toLowerCase().includes(search))
+                            }
+                            return true
+                          })
+                          .map(product => (
+                            <label
+                              key={product.id}
+                              className="flex items-center p-2 hover:bg-gray-50 cursor-pointer"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={formData.configurations.includes(product.id)}
+                                onChange={() => handleConfigurationToggle(product.id)}
+                                className="mr-2"
+                              />
+                              <span className="text-sm text-gray-700">
+                                {product.name} {product.type ? `(${product.type})` : ''}
+                              </span>
+                            </label>
+                          ))}
+                        {availableProducts.filter(p => {
+                          if (p.id === id) return false
+                          if (formData.configurations.includes(p.id)) return false
+                          if (p.parent_product_id && p.parent_product_id !== id) return false
+                          if (configurationsSearch) {
+                            const search = configurationsSearch.toLowerCase()
+                            return p.name.toLowerCase().includes(search) || 
+                                   (p.type && p.type.toLowerCase().includes(search))
+                          }
+                          return true
+                        }).length === 0 && (
+                          <p className="text-sm text-gray-500 p-2">Нет доступных товаров</p>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Список выбранных конфигураций */}
+            {formData.configurations.length > 0 && (
+              <div className="mt-2 space-y-2">
+                {formData.configurations.map(configId => {
+                  const config = availableProducts.find(p => p.id === configId)
+                  if (!config) return null
+                  return (
+                    <div
+                      key={configId}
+                      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                    >
+                      <span className="text-sm text-gray-700">
+                        {config.name} {config.type && `(${config.type})`}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleConfigurationRemove(configId)}
+                        className="text-red-600 hover:text-red-800 text-sm"
+                      >
+                        Удалить
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+            </div>
+          )}
 
           {/* Изображения */}
           <div>

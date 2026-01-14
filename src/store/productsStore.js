@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { getProducts, getProduct, createProduct, updateProduct, deleteProduct, updateProductOrder } from '@utils/api'
+import { getProducts, getProduct, getProductBySlug, createProduct, updateProduct, deleteProduct, updateProductOrder } from '@utils/api'
 
 /**
  * Products store using Zustand
@@ -54,7 +54,7 @@ const useProductsStore = create((set, get) => ({
     }
   },
 
-  // Fetch single product
+  // Fetch single product by ID
   fetchProduct: async (id) => {
     const state = get()
     
@@ -72,6 +72,45 @@ const useProductsStore = create((set, get) => ({
 
     try {
       const product = await getProduct(id)
+      
+      // Проверяем, не был ли запрос отменен
+      if (abortFlag.cancelled) {
+        return
+      }
+
+      set({ currentProduct: product, loading: false, fetchAbortFlag: null })
+    } catch (error) {
+      // Игнорируем ошибки отмененных запросов
+      if (abortFlag.cancelled) {
+        return
+      }
+      set({ 
+        error: error.message || 'Продукт не найден', 
+        loading: false, 
+        fetchAbortFlag: null,
+        currentProduct: null 
+      })
+    }
+  },
+
+  // Fetch single product by slug
+  fetchProductBySlug: async (slug) => {
+    const state = get()
+    
+    // Очищаем предыдущий продукт перед загрузкой нового
+    set({ currentProduct: null })
+    
+    // Отменяем предыдущий запрос, если он еще выполняется
+    if (state.fetchAbortFlag) {
+      state.fetchAbortFlag.cancelled = true
+    }
+
+    // Создаем новый флаг отмены
+    const abortFlag = { cancelled: false }
+    set({ loading: true, error: null, fetchAbortFlag: abortFlag })
+
+    try {
+      const product = await getProductBySlug(slug)
       
       // Проверяем, не был ли запрос отменен
       if (abortFlag.cancelled) {

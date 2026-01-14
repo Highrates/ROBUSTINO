@@ -1,16 +1,14 @@
 import { useRef, useEffect } from 'react'
-import { useFrame } from '@react-three/fiber'
 import { useGLTF } from '@react-three/drei'
 
 /**
  * Chair 3D Model Component
  * @param {string} modelPath - Path to GLB model file
- * @param {boolean} autoRotate - Enable auto rotation
- * @param {Array} rotation - Model rotation [x, y, z] in radians
  * @param {number} scale - Model scale multiplier
+ * @param {Function} onLoad - Callback when model is loaded
  * @param {Object} props - Additional props
  */
-const ChairModel = ({ modelPath, autoRotate = false, rotation = [0, -Math.PI * 0.15, 0], scale = 1, onLoad, ...props }) => {
+const ChairModel = ({ modelPath, scale = 1, onLoad, ...props }) => {
   const group = useRef()
   
   // Load GLB model
@@ -30,16 +28,9 @@ const ChairModel = ({ modelPath, autoRotate = false, rotation = [0, -Math.PI * 0
       onLoad()
     }
   }, [scene, onLoad])
-  
-  // Auto-rotation animation
-  useFrame(() => {
-    if (autoRotate && group.current) {
-      group.current.rotation.y += 0.005
-    }
-  })
 
   return (
-    <group ref={group} {...props} scale={scale} rotation={rotation}>
+    <group ref={group} {...props} scale={scale}>
       <primitive object={scene} />
     </group>
   )

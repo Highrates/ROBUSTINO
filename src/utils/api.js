@@ -96,7 +96,7 @@ export const getProducts = async () => {
     async () => {
       const { data, error } = await supabase
         .from('products')
-        .select('id, name, type, status, created_at, display_order, images')
+        .select('id, name, type, status, created_at, display_order, images, slug, parent_product_id')
         .order('display_order', { ascending: true })
         .order('created_at', { ascending: false })
         .limit(1000)
@@ -154,6 +154,47 @@ export const getProduct = async (id) => {
     2, // 2 попытки
     20000, // 20 секунд таймаут
     'продукт'
+  )
+}
+
+/**
+ * Get product by slug
+ * @param {string} slug - Product slug
+ * @returns {Promise<Object>} Product object
+ */
+export const getProductBySlug = async (slug) => {
+  if (!supabase) {
+    throw new Error('Supabase не настроен')
+  }
+
+  return fetchWithRetry(
+    async () => {
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .eq('slug', slug)
+        .single()
+      
+      if (error) {
+        if (error.code === 'PGRST116') {
+          throw new Error(`Продукт со slug "${slug}" не найден. Возможно, он не опубликован или был удален.`)
+        }
+        throw new Error(error.message || `Ошибка загрузки продукта: ${error.code || 'неизвестная ошибка'}`)
+      }
+      
+      if (!data) {
+        throw new Error(`Продукт со slug "${slug}" не найден`)
+      }
+      
+      if (data.status !== 'published') {
+        throw new Error(`Продукт со slug "${slug}" не опубликован (статус: ${data.status})`)
+      }
+      
+      return data
+    },
+    2,
+    20000,
+    `продукт со slug "${slug}"`
   )
 }
 
@@ -278,7 +319,7 @@ export const getArticles = async () => {
     async () => {
       const { data, error } = await supabase
         .from('articles')
-        .select('id, title, subtitle, status, article_date, created_at, display_order, cover_image, published_at')
+        .select('id, title, subtitle, status, article_date, created_at, display_order, cover_image, published_at, slug')
         .order('display_order', { ascending: true })
         .order('created_at', { ascending: false })
         .limit(1000)
@@ -303,6 +344,47 @@ export const getArticle = async (id) => {
   
   if (error) throw error
   return data
+}
+
+/**
+ * Get article by slug
+ * @param {string} slug - Article slug
+ * @returns {Promise<Object>} Article object
+ */
+export const getArticleBySlug = async (slug) => {
+  if (!supabase) {
+    throw new Error('Supabase не настроен')
+  }
+
+  return fetchWithRetry(
+    async () => {
+      const { data, error } = await supabase
+        .from('articles')
+        .select('*')
+        .eq('slug', slug)
+        .single()
+      
+      if (error) {
+        if (error.code === 'PGRST116') {
+          throw new Error(`Статья со slug "${slug}" не найдена. Возможно, она не опубликована или была удалена.`)
+        }
+        throw new Error(error.message || `Ошибка загрузки статьи: ${error.code || 'неизвестная ошибка'}`)
+      }
+      
+      if (!data) {
+        throw new Error(`Статья со slug "${slug}" не найдена`)
+      }
+      
+      if (data.status !== 'published') {
+        throw new Error(`Статья со slug "${slug}" не опубликована (статус: ${data.status})`)
+      }
+      
+      return data
+    },
+    2,
+    20000,
+    `статья со slug "${slug}"`
+  )
 }
 
 export const createArticle = async (articleData) => {
@@ -402,10 +484,10 @@ export const getProjects = async () => {
 
   return fetchWithRetry(
     async () => {
-      // Сначала получаем проекты без JOIN для скорости
+      // Получаем проекты с информацией о продуктах (включая slug)
       const { data: projects, error } = await supabase
         .from('projects')
-        .select('id, name, seats_count, product_id, images, created_at, display_order, description, upholstery_variant')
+        .select('id, name, seats_count, product_id, images, created_at, display_order, description, upholstery_variant, products(id, name, slug)')
         .order('display_order', { ascending: true })
         .order('created_at', { ascending: false })
         .limit(1000)
@@ -418,26 +500,7 @@ export const getProjects = async () => {
         return []
       }
 
-      // Если есть проекты с product_id, загружаем товары отдельно
-      const productIds = projects
-        .map(p => p.product_id)
-        .filter(id => id !== null && id !== undefined)
-        .filter((id, index, self) => self.indexOf(id) === index)
-
-      if (productIds.length > 0) {
-        const { data: products } = await supabase
-          .from('products')
-          .select('id, name')
-          .in('id', productIds)
-
-        // Объединяем данные
-        const productsMap = new Map(products?.map(p => [p.id, p]) || [])
-        return projects.map(project => ({
-          ...project,
-          products: project.product_id ? productsMap.get(project.product_id) : null
-        }))
-      }
-
+      // Продукты уже загружены через JOIN, возвращаем проекты
       return projects || []
     },
     2,
@@ -458,7 +521,7 @@ export const getProject = async (id) => {
 
   const { data, error } = await supabase
     .from('projects')
-    .select('*, products(id, name)')
+    .select('*, products(id, name, slug)')
     .eq('id', id)
     .single()
   
@@ -498,7 +561,7 @@ export const createProject = async (projectData) => {
   const { data, error } = await supabase
     .from('projects')
     .insert([projectData])
-    .select('*, products(id, name)')
+    .select('*, products(id, name, slug)')
     .single()
   
   if (error) {
@@ -518,7 +581,7 @@ export const updateProject = async (id, updates) => {
     .from('projects')
     .update(updates)
     .eq('id', id)
-    .select('*, products(id, name)')
+    .select('*, products(id, name, slug)')
     .single()
   
   if (error) {
@@ -965,7 +1028,7 @@ export const getUpholsteryVariants = async () => {
     async () => {
       const { data, error } = await supabase
         .from('upholstery_variants')
-        .select('id, name, color, image_url, created_at')
+        .select('id, name, color, image_url, created_at, collection_id, upholstery_collections(id, name)')
         .order('created_at', { ascending: false })
         .limit(1000)
       
@@ -992,7 +1055,7 @@ export const getUpholsteryVariant = async (id) => {
 
   const { data, error } = await supabase
     .from('upholstery_variants')
-    .select('*')
+    .select('*, upholstery_collections(id, name)')
     .eq('id', id)
     .single()
   
@@ -1057,6 +1120,210 @@ export const deleteUpholsteryVariant = async (id) => {
     console.error('Supabase error:', error)
     throw new Error(error.message || 'Ошибка удаления варианта обивки')
   }
+}
+
+// ========== UPHOLSTERY COLLECTIONS ==========
+
+/**
+ * Get all upholstery collections
+ * @returns {Promise<Array>} Array of collection objects
+ */
+export const getUpholsteryCollections = async () => {
+  if (!supabase) {
+    throw new Error('Supabase не настроен')
+  }
+
+  return fetchWithRetry(
+    async () => {
+      const { data, error } = await supabase
+        .from('upholstery_collections')
+        .select('*')
+        .order('display_order', { ascending: true })
+        .order('name', { ascending: true })
+      
+      if (error) {
+        throw error
+      }
+      return data || []
+    },
+    4,
+    30000,
+    'коллекции обивок'
+  )
+}
+
+/**
+ * Get single collection by ID
+ * @param {string} id - Collection ID
+ * @returns {Promise<Object>} Collection object
+ */
+export const getUpholsteryCollection = async (id) => {
+  if (!supabase) {
+    throw new Error('Supabase не настроен')
+  }
+
+  const { data, error } = await supabase
+    .from('upholstery_collections')
+    .select('*')
+    .eq('id', id)
+    .single()
+  
+  if (error) {
+    console.error('Supabase error:', error)
+    throw new Error(error.message || 'Ошибка получения коллекции')
+  }
+  
+  return data
+}
+
+/**
+ * Get or create collection by name (for auto-creation)
+ * @param {string} name - Collection name
+ * @returns {Promise<Object>} Collection object
+ */
+export const getOrCreateCollection = async (name) => {
+  if (!supabase) {
+    throw new Error('Supabase не настроен')
+  }
+
+  if (!name || !name.trim()) {
+    return null
+  }
+
+  const trimmedName = name.trim()
+
+  // Сначала пытаемся найти существующую коллекцию
+  const { data: existing, error: findError } = await supabase
+    .from('upholstery_collections')
+    .select('*')
+    .eq('name', trimmedName)
+    .maybeSingle()
+
+  if (findError && findError.code !== 'PGRST116') {
+    console.error('Supabase error:', findError)
+    throw new Error(findError.message || 'Ошибка поиска коллекции')
+  }
+
+  if (existing) {
+    return existing
+  }
+
+  // Если коллекция не найдена, создаем новую
+  const { data: newCollection, error: createError } = await supabase
+    .from('upholstery_collections')
+    .insert([{ name: trimmedName }])
+    .select()
+    .single()
+
+  if (createError) {
+    console.error('Supabase error:', createError)
+    throw new Error(createError.message || 'Ошибка создания коллекции')
+  }
+
+  return newCollection
+}
+
+/**
+ * Create new collection
+ * @param {Object} collectionData - Collection data
+ * @returns {Promise<Object>} Created collection
+ */
+export const createUpholsteryCollection = async (collectionData) => {
+  if (!supabase) {
+    throw new Error('Supabase не настроен')
+  }
+
+  const { data, error } = await supabase
+    .from('upholstery_collections')
+    .insert([collectionData])
+    .select()
+    .single()
+  
+  if (error) {
+    console.error('Supabase error:', error)
+    throw new Error(error.message || 'Ошибка создания коллекции')
+  }
+  
+  return data
+}
+
+/**
+ * Update collection
+ * @param {string} id - Collection ID
+ * @param {Object} updates - Updates object
+ * @returns {Promise<Object>} Updated collection
+ */
+export const updateUpholsteryCollection = async (id, updates) => {
+  if (!supabase) {
+    throw new Error('Supabase не настроен')
+  }
+
+  const { data, error } = await supabase
+    .from('upholstery_collections')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single()
+  
+  if (error) {
+    console.error('Supabase error:', error)
+    throw new Error(error.message || 'Ошибка обновления коллекции')
+  }
+  
+  return data
+}
+
+/**
+ * Delete collection
+ * @param {string} id - Collection ID
+ * @returns {Promise<void>}
+ */
+export const deleteUpholsteryCollection = async (id) => {
+  if (!supabase) {
+    throw new Error('Supabase не настроен')
+  }
+
+  const { error } = await supabase
+    .from('upholstery_collections')
+    .delete()
+    .eq('id', id)
+  
+  if (error) {
+    console.error('Supabase error:', error)
+    throw new Error(error.message || 'Ошибка удаления коллекции')
+  }
+}
+
+/**
+ * Get unique colors from upholstery variants (for filtering)
+ * @returns {Promise<Array<string>>} Array of unique color names
+ */
+export const getUpholsteryColors = async () => {
+  if (!supabase) {
+    throw new Error('Supabase не настроен')
+  }
+
+  return fetchWithRetry(
+    async () => {
+      const { data, error } = await supabase
+        .from('upholstery_variants')
+        .select('color')
+        .not('color', 'is', null)
+      
+      if (error) {
+        throw error
+      }
+      
+      // Получаем уникальные цвета и сортируем
+      const uniqueColors = [...new Set(data.map(v => v.color).filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b, 'ru'))
+      
+      return uniqueColors
+    },
+    2,
+    10000,
+    'цвета обивок'
+  )
 }
 
 // ========== PRODUCT PROJECTS (Many-to-Many) ==========

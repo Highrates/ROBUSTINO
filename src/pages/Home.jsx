@@ -982,9 +982,9 @@ const Home = () => {
                 </span>
                 {/* Десктоп версия: оригинальное разбиение */}
                 <span className="hidden md:inline">
-                  Надежные и Стильные<br />
-                  кресла для залов -<br />
-                  Robustino
+                Надежные и Стильные<br />
+                кресла для залов -<br />
+                Robustino
                 </span>
               </h1>
               
@@ -1079,7 +1079,7 @@ const Home = () => {
               {publishedProducts.slice(0, 10).map((product, index) => (
                 <Link
                   key={product.id}
-                  to={`/product/${product.id}`}
+                  to={`/product/${product.slug || product.id}`}
                   className="product-card"
                 >
                   {product.images && product.images.length > 0 && product.images[0] ? (
@@ -1233,7 +1233,7 @@ const Home = () => {
                   .map((article) => (
                     <Link
                       key={article.id}
-                      to={`/article/${article.id}`}
+                      to={`/article/${article.slug || article.id}`}
                       className="article flex flex-col gap-4"
                     >
                       <p className="product-type">
@@ -1457,7 +1457,8 @@ const Home = () => {
                                 onClick={(e) => {
                                   e.preventDefault()
                                   e.stopPropagation()
-                                  window.location.href = `/product/${selectedProject.product_id}`
+                                  const productSlug = selectedProject.products?.slug || selectedProject.product_id
+                                  window.location.href = `/product/${productSlug}`
                                 }}
                                 className="project-modal-info-value project-modal-link"
                               >

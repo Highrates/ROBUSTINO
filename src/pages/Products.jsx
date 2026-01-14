@@ -195,7 +195,7 @@ const Products = () => {
                   {publishedProducts.map((product) => (
                     <Link
                       key={product.id}
-                      to={`/product/${product.id}`}
+                      to={`/product/${product.slug || product.id}`}
                       className="product-card"
                     >
                       {product.images && product.images.length > 0 && product.images[0] ? (
