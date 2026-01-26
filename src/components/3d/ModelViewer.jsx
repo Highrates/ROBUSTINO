@@ -319,7 +319,7 @@ export default function ModelViewer({
           {/* направленный свет */}
           <directionalLight
             position={[3, 7, 3]}
-            intensity={5}
+            intensity={3.5}
             castShadow
             shadow-mapSize-width={2048}
             shadow-mapSize-height={2048}
@@ -329,8 +329,8 @@ export default function ModelViewer({
              Environment = единственный заполняющий свет,
              делаем его неярким */}
           <Environment
-            preset="city"
-            environmentIntensity={1.5}
+            files="/environments/empty_warehouse_01_2k.hdr"
+            environmentIntensity={1.1}
             background={null}
           />
 

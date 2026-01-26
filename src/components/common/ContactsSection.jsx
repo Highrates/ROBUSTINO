@@ -24,7 +24,7 @@ const ContactsSection = () => {
                   onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
                 >
                   <span style={{ color: '#363636' }}>[ </span>
-                  <span style={{ color: '#A9A9A9', textTransform: 'uppercase' }}>info@ratco.ru</span>
+                  <span style={{ color: '#A9A9A9', textTransform: 'uppercase', letterSpacing: '0.1px' }}>info@ratco.ru</span>
                   <span style={{ color: '#363636' }}> ]</span>
                 </a>
                 <a 
