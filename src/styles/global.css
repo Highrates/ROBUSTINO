@@ -781,9 +781,7 @@ h1, h2, h3, h4, h5, h6 {
   }
 
   /* Color filter */
-  .upholstery-color-filter {
-    /* gap задан inline в компоненте */
-  }
+  /* gap задан inline в компоненте */
 
   .upholstery-color-circle {
     transition: transform 0.2s ease, opacity 0.2s ease;
@@ -805,9 +803,7 @@ h1, h2, h3, h4, h5, h6 {
     /* Поддержка order для сортировки выбранных карточек */
   }
   
-  .upholstery-grid .upholstery-card {
-    /* order будет задан inline через style */
-  }
+  /* order для .upholstery-grid .upholstery-card будет задан inline через style */
 
   .upholstery-grid .upholstery-cover-image {
     width: 100%;
@@ -1533,8 +1529,62 @@ h1, h2, h3, h4, h5, h6 {
     right: 0;
     width: 100%;
     z-index: 99999 !important;
+    background-color: #F1F2F0;
+    transition: background-color 0.15s ease, all 0.3s ease;
+  }
+
+  /* Убираем фон у navbar на странице About */
+  body.about-page-active .navbar {
     background-color: transparent;
-    transition: all 0.3s ease;
+  }
+
+  /* При открытом меню на странице About тоже меняем фон на #3D3D3D */
+  body.about-page-active .navbar.menu-open {
+    background-color: #3D3D3D !important;
+  }
+
+  /* Navbar в секции About-page-section - белые элементы */
+  body.about-page-active .navbar.navbar-in-hero-section {
+    background-color: transparent !important;
+  }
+
+  body.about-page-active .navbar.navbar-in-hero-section .logo-wrap img {
+    filter: brightness(0) invert(1);
+  }
+
+  body.about-page-active .navbar.navbar-in-hero-section .nav-link,
+  body.about-page-active .navbar.navbar-in-hero-section .nav-link .nav-link-text {
+    color: #FFFFFF !important;
+  }
+
+  body.about-page-active .navbar.navbar-in-hero-section .menu-items span {
+    color: #FFFFFF !important;
+  }
+
+  body.about-page-active .navbar.navbar-in-hero-section .burger-wrap span {
+    background-color: #FFFFFF !important;
+  }
+
+  /* Когда navbar выходит за рамки секции - возвращаем обычные стили */
+  body.about-page-active .navbar:not(.navbar-in-hero-section) {
+    background-color: #F1F2F0 !important;
+  }
+
+  body.about-page-active .navbar:not(.navbar-in-hero-section) .logo-wrap img {
+    filter: none;
+  }
+
+  body.about-page-active .navbar:not(.navbar-in-hero-section) .nav-link,
+  body.about-page-active .navbar:not(.navbar-in-hero-section) .nav-link .nav-link-text {
+    color: inherit !important;
+  }
+
+  body.about-page-active .navbar:not(.navbar-in-hero-section) .menu-items span {
+    color: inherit !important;
+  }
+
+  body.about-page-active .navbar:not(.navbar-in-hero-section) .burger-wrap span {
+    background-color: #363636 !important;
   }
   
   /* Убеждаемся, что navbar и его элементы всегда кликабельны и видимы */
@@ -1552,6 +1602,19 @@ h1, h2, h3, h4, h5, h6 {
   .navbar.menu-open {
     opacity: 1 !important;
     visibility: visible !important;
+    background-color: #3D3D3D !important;
+    transition: background-color 0.15s ease, all 0.3s ease;
+  }
+
+  /* При начале закрытия меню сразу меняем фон navbar */
+  .navbar.menu-closing {
+    background-color: #F1F2F0 !important;
+    transition: background-color 0.15s ease !important;
+  }
+
+  /* На странице About при закрытии меню возвращаем прозрачный фон */
+  body.about-page-active .navbar.menu-closing {
+    background-color: transparent !important;
   }
 
   /* Navbar when menu is open - white elements */
@@ -1963,3 +2026,31 @@ h1, h2, h3, h4, h5, h6 {
   margin: 0;
   color: rgba(0, 0, 0, 0.7);
 }
+
+/* About-page-section overlay */
+.About-page-section {
+  position: relative;
+}
+
+.About-page-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(to bottom right, rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.1));
+  pointer-events: none;
+  z-index: 1;
+}
+
+.About-page-section > * {
+  position: relative;
+  z-index: 2;
+}
+
+/* Устанавливаем max-width для projects-description-text на странице About */
+.about-page .projects-description-text {
+  max-width: 680px;
+}
+

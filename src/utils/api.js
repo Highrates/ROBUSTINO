@@ -1,16 +1,80 @@
 import { supabase } from '@/config/supabase'
+import { getCache, setCache, hasValidCache } from '@/utils/cache'
 
-// ========== HELPER: Retry with timeout ==========
+// ========== HELPER: Retry with timeout and cache ==========
 
 /**
- * Выполняет запрос с повторными попытками и таймаутом
+ * Выполняет запрос с повторными попытками, экспоненциальной задержкой, таймаутом и кэшированием
  * @param {Function} requestFn - Функция запроса
- * @param {number} maxRetries - Максимальное количество попыток
- * @param {number} timeout - Таймаут в миллисекундах
- * @param {string} resourceName - Название ресурса для логирования
+ * @param {Object} options - Опции запроса
+ * @param {number} options.maxRetries - Максимальное количество попыток (по умолчанию 4)
+ * @param {number} options.timeout - Таймаут в миллисекундах (по умолчанию 45000)
+ * @param {string} options.resourceName - Название ресурса для логирования и кэширования
+ * @param {string} options.cacheParams - Параметры для уникальности кэша (опционально)
+ * @param {number} options.cacheTTL - Время жизни кэша в миллисекундах (по умолчанию 1 час)
+ * @param {boolean} options.useCache - Использовать ли кэш (по умолчанию true)
  * @returns {Promise} Результат запроса
  */
-const fetchWithRetry = async (requestFn, maxRetries = 2, timeout = 20000, resourceName = 'данные') => {
+const fetchWithRetry = async (
+  requestFn,
+  {
+    maxRetries = 4,
+    timeout = 45000, // 45 секунд для нестабильных соединений
+    resourceName = 'данные',
+    cacheParams = '',
+    cacheTTL = 3600000, // 1 час по умолчанию
+    useCache = true,
+  } = {}
+) => {
+  let lastError = null
+
+  // Пытаемся получить данные из кэша перед запросом (только если useCache = true)
+  if (useCache) {
+    const cachedData = getCache(resourceName, cacheParams)
+    if (cachedData !== null) {
+      // Есть валидный кэш, но все равно пытаемся обновить данные в фоне
+      // Возвращаем кэш сразу, но продолжаем попытки обновления
+      const updatePromise = fetchWithRetryInternal(requestFn, {
+        maxRetries,
+        timeout,
+        resourceName,
+        cacheParams,
+        cacheTTL,
+        useCache: false, // Не используем кэш для фонового обновления
+      }).catch(() => {
+        // Игнорируем ошибки фонового обновления
+      })
+
+      // Не ждем обновления, возвращаем кэш
+      updatePromise.catch(() => {}) // Подавляем необработанные ошибки
+      return cachedData
+    }
+  }
+
+  return fetchWithRetryInternal(requestFn, {
+    maxRetries,
+    timeout,
+    resourceName,
+    cacheParams,
+    cacheTTL,
+    useCache,
+  })
+}
+
+/**
+ * Внутренняя функция для выполнения запроса с retry
+ */
+const fetchWithRetryInternal = async (
+  requestFn,
+  {
+    maxRetries,
+    timeout,
+    resourceName,
+    cacheParams,
+    cacheTTL,
+    useCache,
+  }
+) => {
   let lastError = null
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -22,6 +86,11 @@ const fetchWithRetry = async (requestFn, maxRetries = 2, timeout = 20000, resour
 
       const requestPromise = requestFn()
       const result = await Promise.race([requestPromise, timeoutPromise])
+
+      // Успешный запрос - сохраняем в кэш
+      if (useCache && result !== null && result !== undefined) {
+        setCache(resourceName, result, cacheParams, cacheTTL)
+      }
 
       return result
     } catch (error) {
@@ -35,7 +104,10 @@ const fetchWithRetry = async (requestFn, maxRetries = 2, timeout = 20000, resour
         error.message?.includes('fetch') ||
         error.message?.includes('Load failed') ||
         error.message?.includes('Failed to fetch') ||
-        error.name === 'TypeError'
+        error.message?.includes('Сетевое соединение потеряно') ||
+        error.message?.includes('Network connection lost') ||
+        error.name === 'TypeError' ||
+        (error.code && ['ECONNRESET', 'ETIMEDOUT', 'ENOTFOUND'].includes(error.code))
 
       const isCorsError = 
         error.message?.includes('access control') ||
@@ -44,13 +116,33 @@ const fetchWithRetry = async (requestFn, maxRetries = 2, timeout = 20000, resour
 
       // Если это CORS ошибка, не повторяем
       if (isCorsError) {
+        // Пытаемся вернуть кэш перед ошибкой
+        if (useCache) {
+          const cachedData = getCache(resourceName, cacheParams)
+          if (cachedData !== null) {
+            console.warn(`Используем кэшированные данные для ${resourceName} из-за CORS ошибки`)
+            return cachedData
+          }
+        }
         throw new Error(
           'Ошибка доступа к серверу. Проверьте настройки CORS в Supabase или попробуйте позже.'
         )
       }
 
-      // Если это последняя попытка, выбрасываем понятную ошибку
+      // Если это последняя попытка
       if (attempt === maxRetries) {
+        // Пытаемся вернуть кэш при сетевой ошибке
+        if (isNetworkError && useCache) {
+          const cachedData = getCache(resourceName, cacheParams)
+          if (cachedData !== null) {
+            console.warn(
+              `Не удалось загрузить ${resourceName} с сервера. Используем кэшированные данные.`
+            )
+            return cachedData
+          }
+        }
+
+        // Если кэша нет, выбрасываем ошибку
         if (isNetworkError) {
           throw new Error(
             `Не удалось загрузить ${resourceName}. Проверьте интернет-соединение и попробуйте обновить страницу.`
@@ -59,13 +151,18 @@ const fetchWithRetry = async (requestFn, maxRetries = 2, timeout = 20000, resour
         break
       }
 
-      // Если ошибка связана с сетью, повторяем попытку (тихо, без лишних логов)
+      // Если ошибка связана с сетью, повторяем попытку с экспоненциальной задержкой
       if (isNetworkError) {
-        // Только для последней попытки показываем предупреждение
-        if (attempt === maxRetries - 1) {
-          console.warn(`Повторная попытка загрузки ${resourceName}...`)
+        // Экспоненциальная задержка: 1s, 2s, 4s, 8s
+        const delay = Math.min(1000 * Math.pow(2, attempt - 1), 8000)
+        
+        if (attempt < maxRetries) {
+          console.warn(
+            `Попытка ${attempt}/${maxRetries} загрузки ${resourceName} не удалась. Повтор через ${delay / 1000}с...`
+          )
         }
-        await new Promise(resolve => setTimeout(resolve, 1000 * attempt))
+        
+        await new Promise(resolve => setTimeout(resolve, delay))
         continue
       }
 
@@ -106,9 +203,12 @@ export const getProducts = async () => {
       }
       return data || []
     },
-    2, // 2 попытки вместо 3
-    20000, // 20 секунд таймаут
-    'товары'
+    {
+      maxRetries: 4,
+      timeout: 45000,
+      resourceName: 'products',
+      cacheTTL: 3600000, // 1 час
+    }
   )
 }
 
@@ -151,9 +251,13 @@ export const getProduct = async (id) => {
       
       return data
     },
-    2, // 2 попытки
-    20000, // 20 секунд таймаут
-    'продукт'
+    {
+      maxRetries: 4,
+      timeout: 45000,
+      resourceName: 'product',
+      cacheParams: id,
+      cacheTTL: 3600000, // 1 час
+    }
   )
 }
 
@@ -192,9 +296,13 @@ export const getProductBySlug = async (slug) => {
       
       return data
     },
-    2,
-    20000,
-    `продукт со slug "${slug}"`
+    {
+      maxRetries: 4,
+      timeout: 45000,
+      resourceName: 'product-by-slug',
+      cacheParams: slug,
+      cacheTTL: 3600000, // 1 час
+    }
   )
 }
 
@@ -329,9 +437,12 @@ export const getArticles = async () => {
       }
       return data || []
     },
-    2,
-    20000,
-    'статьи'
+    {
+      maxRetries: 4,
+      timeout: 45000,
+      resourceName: 'articles',
+      cacheTTL: 3600000, // 1 час
+    }
   )
 }
 
@@ -381,9 +492,13 @@ export const getArticleBySlug = async (slug) => {
       
       return data
     },
-    2,
-    20000,
-    `статья со slug "${slug}"`
+    {
+      maxRetries: 4,
+      timeout: 45000,
+      resourceName: 'article-by-slug',
+      cacheParams: slug,
+      cacheTTL: 3600000, // 1 час
+    }
   )
 }
 
@@ -503,9 +618,12 @@ export const getProjects = async () => {
       // Продукты уже загружены через JOIN, возвращаем проекты
       return projects || []
     },
-    2,
-    20000,
-    'проекты'
+    {
+      maxRetries: 4,
+      timeout: 45000,
+      resourceName: 'projects',
+      cacheTTL: 3600000, // 1 час
+    }
   )
 }
 
@@ -649,9 +767,12 @@ export const getFAQs = async () => {
       }
       return data || []
     },
-    2,
-    20000,
-    'FAQ'
+    {
+      maxRetries: 4,
+      timeout: 45000,
+      resourceName: 'faq',
+      cacheTTL: 3600000, // 1 час
+    }
   )
 }
 
@@ -801,9 +922,12 @@ export const getFAQLinks = async () => {
       }
       return data || []
     },
-    2,
-    20000,
-    'FAQ Links'
+    {
+      maxRetries: 4,
+      timeout: 45000,
+      resourceName: 'faq-links',
+      cacheTTL: 3600000, // 1 час
+    }
   )
 }
 
@@ -945,9 +1069,12 @@ export const getPresentation = async () => {
       }
       return data
     },
-    2,
-    20000,
-    'Presentation'
+    {
+      maxRetries: 4,
+      timeout: 45000,
+      resourceName: 'presentation',
+      cacheTTL: 3600000, // 1 час
+    }
   )
 }
 
@@ -1037,9 +1164,12 @@ export const getUpholsteryVariants = async () => {
       }
       return data || []
     },
-    4,
-    30000,
-    'варианты обивок'
+    {
+      maxRetries: 4,
+      timeout: 45000,
+      resourceName: 'upholstery-variants',
+      cacheTTL: 3600000, // 1 час
+    }
   )
 }
 
@@ -1146,9 +1276,12 @@ export const getUpholsteryCollections = async () => {
       }
       return data || []
     },
-    4,
-    30000,
-    'коллекции обивок'
+    {
+      maxRetries: 4,
+      timeout: 45000,
+      resourceName: 'upholstery-collections',
+      cacheTTL: 3600000, // 1 час
+    }
   )
 }
 
@@ -1320,9 +1453,12 @@ export const getUpholsteryColors = async () => {
       
       return uniqueColors
     },
-    2,
-    10000,
-    'цвета обивок'
+    {
+      maxRetries: 4,
+      timeout: 45000,
+      resourceName: 'upholstery-colors',
+      cacheTTL: 3600000, // 1 час
+    }
   )
 }
 

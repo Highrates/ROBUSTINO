@@ -11,11 +11,20 @@ function CameraController({ zoomLevel, cameraPosition = [0, 0.65, 2] }) {
   
   useEffect(() => {
     if (camera) {
-      // Используем baseZ = 2 для расчета zoom, чтобы сохранить правильный масштаб
-      const baseZ = 2
-      const newZ = baseZ - zoomLevel * 0.4  // Инвертировали знак: - вместо +
-      // Используем X и Y из cameraPosition, но Z рассчитываем от baseZ для zoom
-      camera.position.set(cameraPosition[0], cameraPosition[1], newZ)
+      // Используем camera.zoom для масштабирования вместо изменения позиции
+      // Это более правильный подход, который не меняет перспективу
+      // zoomLevel: -1 = уменьшение, 0 = нормальный, 1 = увеличение
+      const baseZoom = 1.4 // Увеличенный изначальный зум (38% больше базового)
+      const zoomStep = 0.25 // Шаг изменения зума (25%)
+      const newZoom = baseZoom + zoomLevel * zoomStep
+      
+      // Устанавливаем zoom (значения больше 1 = увеличение, меньше 1 = уменьшение)
+      camera.zoom = newZoom
+      
+      // Устанавливаем позицию камеры (теперь Z всегда фиксированная)
+      camera.position.set(cameraPosition[0], cameraPosition[1], cameraPosition[2])
+      
+      // Обновляем матрицу проекции после изменения zoom
       camera.updateProjectionMatrix()
     }
   }, [zoomLevel, camera, cameraPosition])
@@ -293,8 +302,9 @@ export default function ModelViewer({
         <Canvas
           shadows
           camera={{
-            position: [cameraPosition[0], cameraPosition[1], 2], // Z всегда 2 для правильного масштаба, Y из cameraPosition для вертикальной позиции
+            position: [cameraPosition[0], cameraPosition[1], cameraPosition[2]], // Позиция камеры, zoom управляется через CameraController
             fov: 45,
+            zoom: 1.4, // Начальный zoom (будет обновлен CameraController в зависимости от zoomLevel)
           }}
           gl={{
             toneMapping: THREE.ACESFilmicToneMapping,

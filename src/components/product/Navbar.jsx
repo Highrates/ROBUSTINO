@@ -85,7 +85,7 @@ const Navbar = () => {
 
   // Navbar контент
   const navbarContent = (
-    <nav className={`navbar ${isMenuOpen ? 'menu-open' : ''}`}>
+    <nav className={`navbar ${isMenuOpen ? 'menu-open' : ''} ${isClosing ? 'menu-closing' : ''}`}>
       <div className="padding-global">
         <div className="container-large">
           <div className="nav-content self-stretch pt-4 md:pt-10 inline-flex justify-between items-center w-full">
