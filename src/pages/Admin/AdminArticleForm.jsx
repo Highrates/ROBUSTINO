@@ -231,6 +231,7 @@ const AdminArticleForm = () => {
               value={formData.content}
               onChange={(content) => setFormData({ ...formData, content })}
               placeholder="Введите текст статьи..."
+              pathPrefix="articles"
             />
             {errors.content && <p className="mt-1 text-sm text-red-600">{errors.content}</p>}
           </div>

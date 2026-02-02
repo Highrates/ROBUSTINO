@@ -170,6 +170,7 @@ const AdminFAQLinkForm = () => {
                 value={formData.page_content}
                 onChange={(value) => setFormData({ ...formData, page_content: value })}
                 placeholder="Введите содержимое страницы..."
+                pathPrefix="faq-links"
               />
               {errors.page_content && <p className="mt-1 text-sm text-red-600">{errors.page_content}</p>}
             </div>
@@ -197,6 +198,7 @@ const AdminFAQLinkForm = () => {
                   value={formData.rich_text}
                   onChange={(value) => setFormData({ ...formData, rich_text: value })}
                   placeholder="Введите текст ссылки..."
+                  pathPrefix="faq-links"
                 />
               </div>
             </>

@@ -246,10 +246,11 @@ const AdminProjectForm = () => {
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Описание проекта (опционально)
             </label>
-            <RichTextEditor
-              value={formData.description}
-              onChange={(description) => setFormData({ ...formData, description })}
-              placeholder="Введите описание проекта..."
+<RichTextEditor
+            value={formData.description}
+            onChange={(description) => setFormData({ ...formData, description })}
+            placeholder="Введите описание проекта..."
+            pathPrefix="projects"
             />
           </div>
 
