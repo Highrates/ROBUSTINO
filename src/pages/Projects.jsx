@@ -38,7 +38,7 @@ const Projects = () => {
 
   // Загружаем проекты при монтировании
   useEffect(() => {
-    fetchProjects(true) // Принудительная загрузка
+    fetchProjects()
   }, [fetchProjects])
 
   // Проекты не имеют поля status, используем все проекты

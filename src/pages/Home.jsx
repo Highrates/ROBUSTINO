@@ -138,33 +138,55 @@ const Home = () => {
 
   // Загружаем продукты при монтировании
   useEffect(() => {
-    fetchProducts(true)
+    fetchProducts()
   }, [fetchProducts])
   
   // Загружаем FAQ при монтировании
   useEffect(() => {
-    fetchFAQs(true)
+    fetchFAQs()
   }, [fetchFAQs])
   
   // Загружаем FAQ Links при монтировании
   useEffect(() => {
-    fetchFAQLinks(true)
+    fetchFAQLinks()
   }, [fetchFAQLinks])
   
   // Загружаем Presentation при монтировании
   useEffect(() => {
-    fetchPresentation(true)
+    fetchPresentation()
   }, [fetchPresentation])
 
   // Загружаем проекты при монтировании
   useEffect(() => {
-    fetchProjects(true)
+    fetchProjects()
   }, [fetchProjects])
 
   // Загружаем статьи при монтировании
   useEffect(() => {
-    fetchArticles(true)
+    fetchArticles()
   }, [fetchArticles])
+
+  // Обновляем статьи при возврате на вкладку (если редактировали в админке в другой вкладке)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchArticles()
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [fetchArticles])
+
+  // Обновляем продукты при возврате на вкладку (если редактировали в админке в другой вкладке)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchProducts()
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [fetchProducts])
   
   // Обработка скролла к секции contacts при загрузке с хешем #contacts
   useEffect(() => {
@@ -428,9 +450,9 @@ const Home = () => {
         gsap.from(inlineIcons, {
           opacity: 0,
           scale: 0.8,
-          duration: 0.8,
-          delay: 0.7,
-          stagger: 0.1, // Последовательное появление
+          duration: 0.5,
+          delay: 0.4,
+          stagger: 0.08, // Последовательное появление
           ease: 'power2.out',
           scrollTrigger: {
             trigger: aboutSectionRef.current,
@@ -1238,17 +1260,13 @@ const Home = () => {
                     >
                       <p className="product-type">
                         <span style={{ color: '#000000' }}>[ </span>
-                        {article.published_at 
-                          ? new Date(article.published_at).toLocaleDateString('ru-RU', {
+                        {(article.article_date || article.published_at || article.created_at)
+                          ? new Date(article.article_date || article.published_at || article.created_at).toLocaleDateString('ru-RU', {
                               day: 'numeric',
                               month: 'long',
                               year: 'numeric'
                             })
-                          : new Date(article.created_at).toLocaleDateString('ru-RU', {
-                              day: 'numeric',
-                              month: 'long',
-                              year: 'numeric'
-                            })
+                          : ''
                         }
                         <span style={{ color: '#000000' }}> ]</span>
                       </p>

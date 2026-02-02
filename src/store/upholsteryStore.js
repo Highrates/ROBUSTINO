@@ -4,8 +4,11 @@ import {
   getUpholsteryVariant, 
   createUpholsteryVariant, 
   updateUpholsteryVariant, 
-  deleteUpholsteryVariant 
+  deleteUpholsteryVariant,
 } from '@utils/api'
+
+// TTL для кэша в памяти (5 минут)
+const CACHE_TTL = 5 * 60 * 1000
 
 /**
  * Upholstery Variants store using Zustand
@@ -16,29 +19,33 @@ const useUpholsteryStore = create((set, get) => ({
   loading: false,
   error: null,
   lastFetched: null,
-  cacheTTL: 30000, // 30 секунд кэш
-  fetchAbortFlag: null, // Флаг для отмены запросов
+  fetchAbortFlag: null,
 
-  // Fetch all variants
+  // Fetch all variants с умным кэшированием и stale-while-revalidate
   fetchVariants: async (force = false) => {
     const state = get()
     
-    // Проверяем кэш, если не принудительная загрузка
-    if (!force && state.lastFetched && state.variants.length > 0) {
-      const cacheAge = Date.now() - state.lastFetched
-      if (cacheAge < state.cacheTTL) {
-        return
-      }
-    }
-
-    // Отменяем предыдущий запрос, если он еще выполняется
+    // Отменяем предыдущий запрос если есть
     if (state.fetchAbortFlag) {
       state.fetchAbortFlag.cancelled = true
     }
-
-    // Создаем новый флаг отмены
+    
+    // Проверяем свежесть кэша
+    const hasData = state.variants.length > 0
+    const cacheAge = state.lastFetched ? Date.now() - state.lastFetched : Infinity
+    const isCacheFresh = cacheAge < CACHE_TTL
+    
+    // Если кэш свежий и не форсируем обновление - возвращаем из кэша
+    if (!force && hasData && isCacheFresh) {
+      console.log(`[Upholstery] Using cache (age: ${Math.round(cacheAge / 1000)}s)`)
+      return
+    }
+    
+    // Stale-while-revalidate: показываем старые данные сразу, обновляем в фоне
+    const showLoader = !hasData // Loader только если нет данных вообще
+    
     const abortFlag = { cancelled: false }
-    set({ loading: true, error: null, fetchAbortFlag: abortFlag })
+    set({ loading: showLoader, error: null, fetchAbortFlag: abortFlag })
 
     try {
       const variants = await getUpholsteryVariants()
@@ -48,12 +55,20 @@ const useUpholsteryStore = create((set, get) => ({
       }
 
       set({ variants, loading: false, lastFetched: Date.now(), fetchAbortFlag: null })
+      console.log('[Upholstery] Data refreshed from server')
     } catch (error) {
       if (abortFlag.cancelled) {
         return
       }
-      console.error('Ошибка загрузки вариантов обивок:', error)
-      set({ error: error.message, loading: false, fetchAbortFlag: null })
+      
+      // Если есть старые данные - оставляем их, только логируем ошибку
+      if (hasData) {
+        console.warn('[Upholstery] Failed to refresh, using stale data:', error.message)
+        set({ loading: false, fetchAbortFlag: null })
+      } else {
+        console.error('Ошибка загрузки вариантов обивок:', error)
+        set({ error: error.message, loading: false, fetchAbortFlag: null })
+      }
     }
   },
 
@@ -77,7 +92,7 @@ const useUpholsteryStore = create((set, get) => ({
       const newVariant = await createUpholsteryVariant(variantData)
       set((state) => ({
         variants: [newVariant, ...state.variants],
-        lastFetched: null // Инвалидируем кэш
+        lastFetched: Date.now() // Обновляем timestamp кэша
       }))
       return newVariant
     } catch (error) {
@@ -94,7 +109,7 @@ const useUpholsteryStore = create((set, get) => ({
       set((state) => ({
         variants: state.variants.map((v) => (v.id === id ? updatedVariant : v)),
         currentVariant: state.currentVariant?.id === id ? updatedVariant : state.currentVariant,
-        lastFetched: null // Инвалидируем кэш
+        lastFetched: null // Инвалидируем кэш - следующий fetch обновит данные
       }))
       return updatedVariant
     } catch (error) {
@@ -111,7 +126,7 @@ const useUpholsteryStore = create((set, get) => ({
       set((state) => ({
         variants: state.variants.filter((v) => v.id !== id),
         currentVariant: state.currentVariant?.id === id ? null : state.currentVariant,
-        lastFetched: null // Инвалидируем кэш
+        lastFetched: Date.now() // Обновляем timestamp кэша
       }))
     } catch (error) {
       console.error('Ошибка удаления варианта обивки:', error)

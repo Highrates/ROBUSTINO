@@ -1,6 +1,9 @@
 import { create } from 'zustand'
 import { getProducts, getProduct, getProductBySlug, createProduct, updateProduct, deleteProduct, updateProductOrder } from '@utils/api'
 
+// TTL для кэша в памяти (5 минут)
+const CACHE_TTL = 5 * 60 * 1000
+
 /**
  * Products store using Zustand
  */
@@ -10,47 +13,57 @@ const useProductsStore = create((set, get) => ({
   loading: false,
   error: null,
   lastFetched: null,
-  cacheTTL: 30000, // 30 секунд кэш
-  fetchAbortFlag: null, // Флаг для отмены запросов
+  fetchAbortFlag: null,
 
-  // Fetch all products
+  // Fetch all products с умным кэшированием и stale-while-revalidate
   fetchProducts: async (force = false) => {
     const state = get()
     
-    // Проверяем кэш, если не принудительная загрузка
-    // Если данных нет (первый запуск), всегда загружаем
-    if (!force && state.lastFetched && state.products.length > 0) {
-      const cacheAge = Date.now() - state.lastFetched
-      if (cacheAge < state.cacheTTL) {
-        // Данные свежие, не загружаем
-        return
-      }
-    }
-
-    // Отменяем предыдущий запрос, если он еще выполняется
+    // Отменяем предыдущий запрос если есть
     if (state.fetchAbortFlag) {
       state.fetchAbortFlag.cancelled = true
     }
-
-    // Создаем новый флаг отмены
+    
+    // Проверяем свежесть кэша
+    const hasData = state.products.length > 0
+    const cacheAge = state.lastFetched ? Date.now() - state.lastFetched : Infinity
+    const isCacheFresh = cacheAge < CACHE_TTL
+    
+    // Если кэш свежий и не форсируем обновление - возвращаем из кэша
+    if (!force && hasData && isCacheFresh) {
+      console.log(`[Products] Using cache (age: ${Math.round(cacheAge / 1000)}s)`)
+      return
+    }
+    
+    // Stale-while-revalidate: показываем старые данные сразу, обновляем в фоне
+    const showLoader = !hasData // Loader только если нет данных вообще
+    
     const abortFlag = { cancelled: false }
-    set({ loading: true, error: null, fetchAbortFlag: abortFlag })
+    set({ loading: showLoader, error: null, fetchAbortFlag: abortFlag })
 
     try {
       const products = await getProducts()
       
       // Проверяем, не был ли запрос отменен
       if (abortFlag.cancelled) {
-        return // Игнорируем результат отмененного запроса
+        return
       }
 
       set({ products, loading: false, lastFetched: Date.now(), fetchAbortFlag: null })
+      console.log('[Products] Data refreshed from server')
     } catch (error) {
       // Игнорируем ошибки отмененных запросов
       if (abortFlag.cancelled) {
         return
       }
-      set({ error: error.message, loading: false, fetchAbortFlag: null })
+      
+      // Если есть старые данные - оставляем их, только логируем ошибку
+      if (hasData) {
+        console.warn('[Products] Failed to refresh, using stale data:', error.message)
+        set({ loading: false, fetchAbortFlag: null })
+      } else {
+        set({ error: error.message, loading: false, fetchAbortFlag: null })
+      }
     }
   },
 
@@ -140,7 +153,7 @@ const useProductsStore = create((set, get) => ({
       set((state) => ({
         products: [newProduct, ...state.products],
         loading: false,
-        lastFetched: Date.now(), // Обновляем кэш
+        lastFetched: Date.now(), // Обновляем timestamp кэша
       }))
       return newProduct
     } catch (error) {
@@ -157,7 +170,7 @@ const useProductsStore = create((set, get) => ({
       set((state) => ({
         products: state.products.map((p) => (p.id === id ? updatedProduct : p)),
         loading: false,
-        lastFetched: Date.now(), // Обновляем кэш
+        lastFetched: null, // Инвалидируем кэш - следующий fetch обновит данные
       }))
       return updatedProduct
     } catch (error) {
@@ -174,7 +187,7 @@ const useProductsStore = create((set, get) => ({
       set((state) => ({
         products: state.products.filter((p) => p.id !== id),
         loading: false,
-        lastFetched: Date.now(), // Обновляем кэш
+        lastFetched: Date.now(), // Обновляем timestamp кэша
       }))
     } catch (error) {
       set({ error: error.message, loading: false })

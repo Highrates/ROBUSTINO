@@ -76,7 +76,7 @@ const Upholstery = () => {
 
   // Загружаем варианты обивки при монтировании
   useEffect(() => {
-    fetchVariants(true) // Принудительная загрузка
+    fetchVariants()
   }, [fetchVariants])
 
   // Загружаем список цветов при монтировании

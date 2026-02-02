@@ -28,7 +28,18 @@ const Products = () => {
 
   // Загружаем продукты при монтировании
   useEffect(() => {
-    fetchProducts(true) // Принудительная загрузка
+    fetchProducts()
+  }, [fetchProducts])
+
+  // Обновляем продукты при возврате на вкладку (если редактировали в админке в другой вкладке)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchProducts()
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
   }, [fetchProducts])
 
   // Мемоизируем отфильтрованные продукты

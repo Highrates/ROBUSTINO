@@ -1,6 +1,9 @@
 import { create } from 'zustand'
 import { getFAQLinks, getFAQLink, createFAQLink, updateFAQLink, deleteFAQLink, updateFAQLinksOrder } from '@utils/api'
 
+// TTL для кэша в памяти (5 минут)
+const CACHE_TTL = 5 * 60 * 1000
+
 /**
  * FAQ Links store using Zustand
  */
@@ -10,25 +13,32 @@ const useFAQLinksStore = create((set, get) => ({
   loading: false,
   error: null,
   lastFetched: null,
-  cacheTTL: 30000, // 30 секунд кэш
   fetchAbortFlag: null,
 
   fetchFAQLinks: async (force = false) => {
     const state = get()
     
-    if (!force && state.lastFetched && state.links.length > 0) {
-      const cacheAge = Date.now() - state.lastFetched
-      if (cacheAge < state.cacheTTL) {
-        return
-      }
-    }
-
+    // Отменяем предыдущий запрос если есть
     if (state.fetchAbortFlag) {
       state.fetchAbortFlag.cancelled = true
     }
-
+    
+    // Проверяем свежесть кэша
+    const hasData = state.links.length > 0
+    const cacheAge = state.lastFetched ? Date.now() - state.lastFetched : Infinity
+    const isCacheFresh = cacheAge < CACHE_TTL
+    
+    // Если кэш свежий и не форсируем обновление - возвращаем из кэша
+    if (!force && hasData && isCacheFresh) {
+      console.log(`[FAQ Links] Using cache (age: ${Math.round(cacheAge / 1000)}s)`)
+      return
+    }
+    
+    // Stale-while-revalidate: показываем старые данные сразу, обновляем в фоне
+    const showLoader = !hasData // Loader только если нет данных вообще
+    
     const abortFlag = { cancelled: false }
-    set({ loading: true, error: null, fetchAbortFlag: abortFlag })
+    set({ loading: showLoader, error: null, fetchAbortFlag: abortFlag })
 
     try {
       const links = await getFAQLinks()
@@ -38,11 +48,19 @@ const useFAQLinksStore = create((set, get) => ({
       }
 
       set({ links, loading: false, lastFetched: Date.now(), fetchAbortFlag: null })
+      console.log('[FAQ Links] Data refreshed from server')
     } catch (error) {
       if (abortFlag.cancelled) {
         return
       }
-      set({ error: error.message, loading: false, fetchAbortFlag: null })
+      
+      // Если есть старые данные - оставляем их, только логируем ошибку
+      if (hasData) {
+        console.warn('[FAQ Links] Failed to refresh, using stale data:', error.message)
+        set({ loading: false, fetchAbortFlag: null })
+      } else {
+        set({ error: error.message, loading: false, fetchAbortFlag: null })
+      }
     }
   },
 
@@ -79,7 +97,7 @@ const useFAQLinksStore = create((set, get) => ({
       set((state) => ({
         links: [...state.links, newLink],
         loading: false,
-        lastFetched: Date.now(),
+        lastFetched: Date.now(), // Обновляем timestamp кэша
       }))
       return newLink
     } catch (error) {
@@ -95,7 +113,7 @@ const useFAQLinksStore = create((set, get) => ({
       set((state) => ({
         links: state.links.map((l) => (l.id === id ? updatedLink : l)),
         loading: false,
-        lastFetched: Date.now(),
+        lastFetched: null, // Инвалидируем кэш - следующий fetch обновит данные
       }))
       return updatedLink
     } catch (error) {
@@ -111,7 +129,7 @@ const useFAQLinksStore = create((set, get) => ({
       set((state) => ({
         links: state.links.filter((l) => l.id !== id),
         loading: false,
-        lastFetched: Date.now(),
+        lastFetched: Date.now(), // Обновляем timestamp кэша
       }))
     } catch (error) {
       set({ error: error.message, loading: false })

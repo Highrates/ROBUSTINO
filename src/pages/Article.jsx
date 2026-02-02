@@ -159,18 +159,15 @@ const Article = () => {
     )
   }
 
-  // Форматируем дату
-  const articleDate = currentArticle.published_at 
-    ? new Date(currentArticle.published_at).toLocaleDateString('ru-RU', {
+  // Форматируем дату (используем article_date из админки, иначе published_at или created_at)
+  const dateSource = currentArticle.article_date || currentArticle.published_at || currentArticle.created_at
+  const articleDate = dateSource
+    ? new Date(dateSource).toLocaleDateString('ru-RU', {
         day: 'numeric',
         month: 'long',
         year: 'numeric'
       })
-    : new Date(currentArticle.created_at).toLocaleDateString('ru-RU', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric'
-      })
+    : ''
 
   return (
     <div className="article-page relative bg-main-bg">

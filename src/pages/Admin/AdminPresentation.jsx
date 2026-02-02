@@ -57,7 +57,7 @@ const AdminPresentation = () => {
       }
 
       await savePresentation(presentationData)
-      await fetchPresentation(true)
+      await fetchPresentation()
       alert('Презентация успешно сохранена')
     } catch (error) {
       console.error('Ошибка сохранения презентации:', error)

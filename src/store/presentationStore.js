@@ -1,6 +1,9 @@
 import { create } from 'zustand'
 import { getPresentation, createPresentation, updatePresentation } from '@utils/api'
 
+// TTL для кэша в памяти (5 минут)
+const CACHE_TTL = 5 * 60 * 1000
+
 /**
  * Presentation store using Zustand
  */
@@ -9,25 +12,32 @@ const usePresentationStore = create((set, get) => ({
   loading: false,
   error: null,
   lastFetched: null,
-  cacheTTL: 30000,
   fetchAbortFlag: null,
 
   fetchPresentation: async (force = false) => {
     const state = get()
     
-    if (!force && state.lastFetched && state.presentation) {
-      const cacheAge = Date.now() - state.lastFetched
-      if (cacheAge < state.cacheTTL) {
-        return
-      }
-    }
-
+    // Отменяем предыдущий запрос если есть
     if (state.fetchAbortFlag) {
       state.fetchAbortFlag.cancelled = true
     }
-
+    
+    // Проверяем свежесть кэша
+    const hasData = state.presentation !== null
+    const cacheAge = state.lastFetched ? Date.now() - state.lastFetched : Infinity
+    const isCacheFresh = cacheAge < CACHE_TTL
+    
+    // Если кэш свежий и не форсируем обновление - возвращаем из кэша
+    if (!force && hasData && isCacheFresh) {
+      console.log(`[Presentation] Using cache (age: ${Math.round(cacheAge / 1000)}s)`)
+      return
+    }
+    
+    // Stale-while-revalidate: показываем старые данные сразу, обновляем в фоне
+    const showLoader = !hasData // Loader только если нет данных вообще
+    
     const abortFlag = { cancelled: false }
-    set({ loading: true, error: null, fetchAbortFlag: abortFlag })
+    set({ loading: showLoader, error: null, fetchAbortFlag: abortFlag })
 
     try {
       const presentation = await getPresentation()
@@ -37,11 +47,19 @@ const usePresentationStore = create((set, get) => ({
       }
 
       set({ presentation, loading: false, lastFetched: Date.now(), fetchAbortFlag: null })
+      console.log('[Presentation] Data refreshed from server')
     } catch (error) {
       if (abortFlag.cancelled) {
         return
       }
-      set({ error: error.message, loading: false, fetchAbortFlag: null })
+      
+      // Если есть старые данные - оставляем их, только логируем ошибку
+      if (hasData) {
+        console.warn('[Presentation] Failed to refresh, using stale data:', error.message)
+        set({ loading: false, fetchAbortFlag: null })
+      } else {
+        set({ error: error.message, loading: false, fetchAbortFlag: null })
+      }
     }
   },
 
@@ -56,11 +74,10 @@ const usePresentationStore = create((set, get) => ({
       } else {
         savedPresentation = await createPresentation(presentationData)
       }
-      
       set({ 
         presentation: savedPresentation, 
         loading: false, 
-        lastFetched: Date.now() 
+        lastFetched: Date.now() // Обновляем timestamp кэша
       })
       return savedPresentation
     } catch (error) {

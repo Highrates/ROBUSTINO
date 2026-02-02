@@ -1,11 +1,30 @@
-import { useRef, useEffect } from 'react'
-import ReactQuill from 'react-quill'
+import { useRef } from 'react'
+import ReactQuill, { Quill } from 'react-quill'
+import QuillResize from 'quill-resize-module/dist/resize.js'
 import 'react-quill/dist/quill.snow.css'
+import 'quill-resize-module/dist/resize.css'
+
+// Регистрируем модуль изменения размера изображений (используем Quill из react-quill)
+Quill.register('modules/resize', QuillResize)
 
 const RichTextEditor = ({ value, onChange, placeholder = 'Введите текст статьи...' }) => {
   const quillRef = useRef(null)
 
   const modules = {
+    resize: {
+      modules: ['Resize', 'DisplaySize'],
+      parchment: {
+        image: {
+          attribute: ['width', 'height'],
+          limit: {
+            minWidth: 100,
+            maxWidth: 800,
+            minHeight: 100,
+            maxHeight: 600,
+          },
+        },
+      },
+    },
     toolbar: [
       [{ header: [1, 2, 3, false] }],
       ['bold', 'italic', 'underline', 'strike'],

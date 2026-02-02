@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
@@ -7,6 +8,7 @@ import Navbar from '@components/product/Navbar'
 import ModelViewer from '@components/3d/ModelViewer'
 import useProductsStore from '@store/productsStore'
 import useUpholsteryStore from '@store/upholsteryStore'
+import useProjectsStore from '@store/projectsStore'
 import Loader from '@components/common/Loader'
 
 // Register ScrollTrigger plugin
@@ -17,9 +19,21 @@ const Product = () => {
   const navigate = useNavigate()
   const { currentProduct, products, loading, error, fetchProductBySlug, fetchProducts } = useProductsStore()
   const { variants: upholsteryVariants, fetchVariants } = useUpholsteryStore()
+  const { projects, fetchProjects } = useProjectsStore()
   const [autoRotate, setAutoRotate] = useState(true)
   const [zoomLevel, setZoomLevel] = useState(0) // 0 = нормальный, 1 = приближенный, -1 = отдаленный
   const [modelScale, setModelScale] = useState(0.7) // Начальный scale для анимации (будет увеличиваться до 1)
+  
+  // Image viewer state
+  const [isImageViewerOpen, setIsImageViewerOpen] = useState(false)
+  const [currentImageIndex, setCurrentImageIndex] = useState(0)
+  const [viewerImages, setViewerImages] = useState([])
+  
+  // Project modal state
+  const [selectedProject, setSelectedProject] = useState(null)
+  const [isProjectModalOpen, setIsProjectModalOpen] = useState(false)
+  const [isProjectModalClosing, setIsProjectModalClosing] = useState(false)
+  const projectModalCloseTimerRef = useRef(null)
   
   // Refs для анимаций
   const productSectionRef = useRef(null)
@@ -28,9 +42,16 @@ const Product = () => {
   const productInfoRefs = useRef([])
   const productContentBottomRef = useRef(null)
   
+  // Refs для product-details-section
+  const productDetailsSectionRef = useRef(null)
+  const pdcLeftRef = useRef(null)
+  const pdcRightRef = useRef(null)
+  
   // Refs для хранения анимаций и триггеров для правильной очистки
   const animationsRef = useRef([])
   const scrollTriggersRef = useRef([])
+  const detailsAnimationsRef = useRef([])
+  const detailsScrollTriggersRef = useRef([])
 
   // Скроллим вверх при монтировании страницы
   useEffect(() => {
@@ -46,7 +67,7 @@ const Product = () => {
   useEffect(() => {
     // Загружаем только если продуктов нет или кэш устарел
     if (products.length === 0) {
-      fetchProducts(false) // Используем кэш, если есть
+      fetchProducts()
     }
   }, [fetchProducts, products.length])
 
@@ -54,9 +75,16 @@ const Product = () => {
   useEffect(() => {
     // Загружаем только если вариантов нет или кэш устарел
     if (upholsteryVariants.length === 0) {
-      fetchVariants(false) // Используем кэш, если есть
+      fetchVariants()
     }
   }, [fetchVariants, upholsteryVariants.length])
+
+  // Загружаем проекты для отображения реализованных объектов
+  useEffect(() => {
+    if (projects.length === 0) {
+      fetchProjects()
+    }
+  }, [fetchProjects, projects.length])
 
   // Загружаем продукт при монтировании или изменении slug
   useEffect(() => {
@@ -334,6 +362,86 @@ const Product = () => {
     }
   }, [currentProduct, prefersReducedMotion])
 
+  // Анимации product-details-section
+  useEffect(() => {
+    if (!currentProduct || !productDetailsSectionRef.current) return
+
+    const pdcLeft = pdcLeftRef.current
+    const pdcRight = pdcRightRef.current
+
+    if (prefersReducedMotion) {
+      if (pdcLeft) gsap.set(pdcLeft, { opacity: 1, x: 0 })
+      if (pdcRight) gsap.set(pdcRight, { opacity: 1, x: 0 })
+      return
+    }
+
+    // Начальное состояние
+    if (pdcLeft) {
+      gsap.set(pdcLeft, { opacity: 0, x: -40 })
+    }
+    if (pdcRight) {
+      gsap.set(pdcRight, { opacity: 0, x: 40 })
+    }
+
+    const timeoutId = setTimeout(() => {
+      ScrollTrigger.refresh()
+
+      const sectionRect = productDetailsSectionRef.current?.getBoundingClientRect()
+      const isSectionVisible = sectionRect && sectionRect.top < window.innerHeight * 0.8
+
+      if (pdcLeft) {
+        gsap.set(pdcLeft, { willChange: 'opacity, transform' })
+        const anim = gsap.to(pdcLeft, {
+          opacity: 1,
+          x: 0,
+          duration: 0.8,
+          delay: 0.1,
+          ease: 'power3.out',
+          scrollTrigger: isSectionVisible ? undefined : {
+            trigger: productDetailsSectionRef.current,
+            start: 'top 80%',
+            toggleActions: 'play none none none'
+          },
+          onComplete: () => gsap.set(pdcLeft, { willChange: 'auto' })
+        })
+        if (anim.scrollTrigger) detailsScrollTriggersRef.current.push(anim.scrollTrigger)
+        detailsAnimationsRef.current.push(anim)
+      }
+
+      if (pdcRight) {
+        gsap.set(pdcRight, { willChange: 'opacity, transform' })
+        const anim = gsap.to(pdcRight, {
+          opacity: 1,
+          x: 0,
+          duration: 0.8,
+          delay: 0.3,
+          ease: 'power3.out',
+          scrollTrigger: isSectionVisible ? undefined : {
+            trigger: productDetailsSectionRef.current,
+            start: 'top 80%',
+            toggleActions: 'play none none none'
+          },
+          onComplete: () => gsap.set(pdcRight, { willChange: 'auto' })
+        })
+        if (anim.scrollTrigger) detailsScrollTriggersRef.current.push(anim.scrollTrigger)
+        detailsAnimationsRef.current.push(anim)
+      }
+    }, 150)
+
+    return () => {
+      clearTimeout(timeoutId)
+      detailsAnimationsRef.current.forEach(anim => anim?.kill?.())
+      detailsAnimationsRef.current = []
+      detailsScrollTriggersRef.current.forEach(trigger => trigger?.kill?.())
+      detailsScrollTriggersRef.current = []
+      ScrollTrigger.getAll().forEach(trigger => {
+        if (trigger.vars?.trigger === productDetailsSectionRef.current) trigger.kill()
+      })
+      if (pdcLeft) gsap.set(pdcLeft, { willChange: 'auto' })
+      if (pdcRight) gsap.set(pdcRight, { willChange: 'auto' })
+    }
+  }, [currentProduct, prefersReducedMotion])
+
   // Получаем опубликованные продукты, отсортированные по display_order
   const publishedProducts = useMemo(() => {
     if (!products || products.length === 0) return []
@@ -363,6 +471,77 @@ const Product = () => {
     const nextIndex = (currentIndex + 1) % publishedProducts.length
     return publishedProducts[nextIndex] || null
   }, [currentProduct?.id, publishedProducts])
+
+  // Конфигурации модели — товары, у которых parent_product_id = текущий продукт (из админки)
+  const modelConfigurations = useMemo(() => {
+    if (!currentProduct?.id || !products?.length) return []
+    return products
+      .filter(p => p?.parent_product_id === currentProduct.id && p?.status === 'published')
+      .sort((a, b) => {
+        if (a.display_order != null && b.display_order != null) return a.display_order - b.display_order
+        if (a.display_order != null) return -1
+        if (b.display_order != null) return 1
+        return 0
+      })
+  }, [currentProduct?.id, products])
+
+  // Основная модель — родительский товар, если текущий продукт является конфигурацией
+  const parentProduct = useMemo(() => {
+    if (!currentProduct?.parent_product_id || !products?.length) return null
+    return products.find(p => p?.id === currentProduct.parent_product_id && p?.status === 'published') || null
+  }, [currentProduct?.parent_product_id, products])
+
+  // Реализованные проекты с этой моделью
+  const productProjects = useMemo(() => {
+    if (!currentProduct?.id || !projects?.length) return []
+    return projects.filter(project => project?.product_id === currentProduct.id)
+  }, [currentProduct?.id, projects])
+
+  // Открытие просмотра изображения
+  const handleOpenImageViewer = (images, startIndex = 0) => {
+    setViewerImages(images)
+    setCurrentImageIndex(startIndex)
+    setIsImageViewerOpen(true)
+  }
+
+  // Закрытие просмотра изображения
+  const handleCloseImageViewer = () => {
+    setIsImageViewerOpen(false)
+    setViewerImages([])
+    setCurrentImageIndex(0)
+  }
+
+  // Переход к следующему изображению
+  const handleNextImage = () => {
+    setCurrentImageIndex((prev) => (prev + 1) % viewerImages.length)
+  }
+
+  // Переход к предыдущему изображению
+  const handlePrevImage = () => {
+    setCurrentImageIndex((prev) => (prev - 1 + viewerImages.length) % viewerImages.length)
+  }
+
+  // Открытие модального окна проекта
+  const handleOpenProjectModal = (project) => {
+    setSelectedProject(project)
+    setIsProjectModalClosing(false)
+    setIsProjectModalOpen(true)
+  }
+
+  // Закрытие модального окна проекта с анимацией
+  const handleCloseProjectModal = () => {
+    if (projectModalCloseTimerRef.current) {
+      clearTimeout(projectModalCloseTimerRef.current)
+    }
+    
+    setIsProjectModalClosing(true)
+    projectModalCloseTimerRef.current = setTimeout(() => {
+      setIsProjectModalOpen(false)
+      setIsProjectModalClosing(false)
+      setSelectedProject(null)
+      projectModalCloseTimerRef.current = null
+    }, 400) // Длительность анимации
+  }
 
   // Предзагрузка следующей модели
   useEffect(() => {
@@ -496,9 +675,17 @@ const Product = () => {
                 Вернуться в каталог
               </Link>
 
-              {/* Product Titles */}
+              {/* Product Titles — порядок как на Home и Products: сначала название, затем тип */}
               <div className="product-titles inline-flex flex-col justify-start items-center gap-0.5">
-                {/* Subtitle */}
+                {/* Product Name (основной заголовок) */}
+                <h1 
+                  className="text-[24px] text-main-text uppercase"
+                  style={{ fontWeight: 450, letterSpacing: '-0.02em' }}
+                >
+                  {currentProduct?.name || 'Название продукта'}
+                </h1>
+
+                {/* Subtitle (тип) */}
                 {currentProduct?.type && (
                 <p 
                   className="text-[14px] text-second-text uppercase"
@@ -507,14 +694,6 @@ const Product = () => {
                     {currentProduct.type}
                 </p>
                 )}
-
-                {/* Product Name */}
-                <h1 
-                  className="text-[24px] text-main-text uppercase"
-                  style={{ fontWeight: 450, letterSpacing: '-0.02em' }}
-                >
-                  {currentProduct?.name || 'Название продукта'}
-                </h1>
 
                 {/* Product Materials Wrap */}
                 <div 
@@ -616,6 +795,43 @@ const Product = () => {
                       {currentProduct?.in_stock || 'не указано'}
                     </p>
                   </div>
+
+                  {/* Конфигурации модели — только если есть конфигурации */}
+                  {modelConfigurations.length > 0 && (
+                    <div ref={el => productInfoRefs.current[4] = el} className="product-info self-stretch inline-flex flex-col justify-start items-start gap-0.5">
+                      <p className="text-[14px] text-second-text uppercase" style={{ fontWeight: 450 }}>
+                        Конфигурации модели
+                      </p>
+                      <div className="flex flex-col gap-0.5">
+                        {modelConfigurations.map((config) => (
+                          <Link
+                            key={config.id}
+                            to={`/product/${config.slug || config.id}`}
+                            className="text-[14px] text-main-text uppercase hover:text-second-text transition-colors"
+                            style={{ fontWeight: 450 }}
+                          >
+                            {config.name}
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Основная модель — только если текущий продукт является конфигурацией */}
+                  {parentProduct && (
+                    <div ref={el => productInfoRefs.current[5] = el} className="product-info self-stretch inline-flex flex-col justify-start items-start gap-0.5">
+                      <p className="text-[14px] text-second-text uppercase" style={{ fontWeight: 450 }}>
+                        Основная модель
+                      </p>
+                      <Link
+                        to={`/product/${parentProduct.slug || parentProduct.id}`}
+                        className="text-[14px] text-main-text uppercase hover:text-second-text transition-colors"
+                        style={{ fontWeight: 450 }}
+                      >
+                        {parentProduct.name}
+                      </Link>
+                    </div>
+                  )}
             </div>
 
             {/* Product Content Bottom - Absolute Overlay */}
@@ -684,6 +900,262 @@ const Product = () => {
           </div>
         </div>
       </section>
+
+      {/* Product Details Section */}
+      <section ref={productDetailsSectionRef} className="product-details-section relative" style={{ backgroundColor: '#3d3d3d' }}>
+        <div className="padding-global">
+          <div className="container-large">
+            <div className="product-details-content" style={{
+              display: 'flex',
+              flexDirection: 'row',
+              gap: '86px',
+              height: 'auto',
+              paddingTop: '56px',
+              paddingBottom: '56px',
+              color: '#fff'
+            }}>
+              {/* Left Column */}
+              <div ref={pdcLeftRef} className="pdc-left" style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '32px',
+                width: '768px',
+                maxWidth: '768px'
+              }}>
+                {/* Реализованные объекты с этой моделью */}
+                {productProjects.length > 0 && (
+                  <div className="project-modal-info-item">
+                    <p className="project-modal-info-label">Реализованные объекты с этой моделью</p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '8px' }}>
+                      {productProjects.slice(0, 7).map((project) => (
+                        <span
+                          key={project.id}
+                          onClick={() => handleOpenProjectModal(project)}
+                          className="project-modal-info-value project-modal-link"
+                        >
+                          {project.name}
+                        </span>
+                      ))}
+                      {productProjects.length > 7 && (
+                        <Link
+                          to="/projects"
+                          className="project-modal-info-value project-modal-link"
+                        >
+                          +{productProjects.length - 7}
+                        </Link>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Изображения продукта (начиная со второго) */}
+                {currentProduct?.images && currentProduct.images.length > 1 && (
+                  <div className="project-imgs-wrapper">
+                    {currentProduct.images.slice(1, 4).map((image, index) => {
+                      const isLastVisible = index === 2 && currentProduct.images.length > 4
+                      const remainingCount = currentProduct.images.length - 4
+                      
+                      return (
+                        <div
+                          key={index}
+                          className="project-modal-image-container"
+                          onClick={() => handleOpenImageViewer(currentProduct.images.slice(1), index)}
+                        >
+                          <img
+                            src={image}
+                            alt={`${currentProduct.name} - изображение ${index + 2}`}
+                            className="project-modal-image"
+                            onError={(e) => {
+                              e.target.style.display = 'none'
+                            }}
+                          />
+                          {isLastVisible && (
+                            <div className="project-modal-image-overlay">
+                              <span className="project-modal-image-count">+{remainingCount}</span>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Right Column */}
+              <div ref={pdcRightRef} className="pdc-right" style={{ flex: 1 }}>
+                {currentProduct?.description && (
+                  <div 
+                    className="project-modal-description"
+                    dangerouslySetInnerHTML={{ __html: currentProduct.description }}
+                  />
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Просмотр изображений в полноэкранном режиме */}
+      {isImageViewerOpen && createPortal(
+        <div className="image-viewer-overlay" onClick={handleCloseImageViewer}>
+          <button
+            className="image-viewer-close"
+            onClick={handleCloseImageViewer}
+            aria-label="Закрыть"
+          >
+            <div className="image-viewer-close-icon">
+              <span></span>
+              <span></span>
+            </div>
+          </button>
+          <div className="image-viewer-content" onClick={(e) => e.stopPropagation()}>
+            {viewerImages.length > 1 && (
+              <>
+                <button
+                  className="image-viewer-nav image-viewer-prev"
+                  onClick={handlePrevImage}
+                  aria-label="Предыдущее изображение"
+                >
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M15 18L9 12L15 6" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
+                <button
+                  className="image-viewer-nav image-viewer-next"
+                  onClick={handleNextImage}
+                  aria-label="Следующее изображение"
+                >
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M9 18L15 12L9 6" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
+              </>
+            )}
+            <img
+              src={viewerImages[currentImageIndex]}
+              alt={`Изображение ${currentImageIndex + 1} из ${viewerImages.length}`}
+              className="image-viewer-img"
+            />
+            {viewerImages.length > 1 && (
+              <div className="image-viewer-counter">
+                {currentImageIndex + 1} / {viewerImages.length}
+              </div>
+            )}
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Модальное окно проекта */}
+      {(isProjectModalOpen || isProjectModalClosing) && createPortal(
+        <div 
+          className={`project-modal-overlay ${isProjectModalClosing ? 'closing' : ''}`}
+          onClick={handleCloseProjectModal}
+        >
+          <div 
+            className={`project-modal ${isProjectModalClosing ? 'closing' : ''}`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              className="project-modal-close"
+              onClick={handleCloseProjectModal}
+              aria-label="Закрыть"
+            >
+              <div className="project-modal-close-icon">
+                <span></span>
+                <span></span>
+              </div>
+            </button>
+            <div className="padding-global">
+              <div className="container-large">
+                <div className="project-modal-content">
+                  {selectedProject && (
+                    <>
+                      <div className="project-modal-left">
+                        {/* Название проекта */}
+                        <h2 className="project-modal-title">{selectedProject.name}</h2>
+                        
+                        {/* Информация о проекте */}
+                        <div className="project-modal-info">
+                          {/* Кресло */}
+                          <div className="project-modal-info-item">
+                            <p className="project-modal-info-label">Кресло</p>
+                            {currentProduct ? (
+                              <p className="project-modal-info-value project-modal-info-value-white">
+                                {currentProduct.name}
+                              </p>
+                            ) : (
+                              <p className="project-modal-info-value">не указано</p>
+                            )}
+                          </div>
+                          
+                          {/* Количество мест */}
+                          <div className="project-modal-info-item">
+                            <p className="project-modal-info-label">Количество мест</p>
+                            <p className="project-modal-info-value project-modal-info-value-white">
+                              {selectedProject.seats_count || 'не указано'}
+                            </p>
+                          </div>
+                          
+                          {/* Вариант обивки */}
+                          <div className="project-modal-info-item">
+                            <p className="project-modal-info-label">Вариант обивки</p>
+                            <p className="project-modal-info-value project-modal-info-value-white">
+                              {selectedProject.upholstery_variant || 'не указано'}
+                            </p>
+                          </div>
+                        </div>
+                        
+                        {/* Изображения проекта */}
+                        {selectedProject.images && selectedProject.images.length > 0 && (
+                          <div className="project-imgs-wrapper">
+                            {selectedProject.images.slice(0, 3).map((image, index) => {
+                              const isLastVisible = index === 2 && selectedProject.images.length > 3
+                              const remainingCount = selectedProject.images.length - 3
+                              
+                              return (
+                                <div
+                                  key={index}
+                                  className="project-modal-image-container"
+                                  onClick={() => handleOpenImageViewer(selectedProject.images, index)}
+                                >
+                                  <img
+                                    src={image}
+                                    alt={`${selectedProject.name} - изображение ${index + 1}`}
+                                    className="project-modal-image"
+                                    onError={(e) => {
+                                      e.target.style.display = 'none'
+                                    }}
+                                  />
+                                  {isLastVisible && (
+                                    <div className="project-modal-image-overlay">
+                                      <span className="project-modal-image-count">+{remainingCount}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              )
+                            })}
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="project-modal-right">
+                        {selectedProject.description && (
+                          <div 
+                            className="project-modal-description"
+                            dangerouslySetInnerHTML={{ __html: selectedProject.description }}
+                          />
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   )
 }

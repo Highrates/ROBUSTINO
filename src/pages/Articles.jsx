@@ -28,7 +28,18 @@ const Articles = () => {
 
   // Загружаем статьи при монтировании
   useEffect(() => {
-    fetchArticles(true) // Принудительная загрузка
+    fetchArticles()
+  }, [fetchArticles])
+
+  // Обновляем статьи при возврате на вкладку (если редактировали в админке в другой вкладке)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchArticles()
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
   }, [fetchArticles])
 
   // Мемоизируем отфильтрованные статьи
@@ -200,17 +211,13 @@ const Articles = () => {
                     >
                       <p className="product-type">
                         <span style={{ color: '#000000' }}>[ </span>
-                        {article.published_at 
-                          ? new Date(article.published_at).toLocaleDateString('ru-RU', {
+                        {(article.article_date || article.published_at || article.created_at)
+                          ? new Date(article.article_date || article.published_at || article.created_at).toLocaleDateString('ru-RU', {
                               day: 'numeric',
                               month: 'long',
                               year: 'numeric'
                             })
-                          : new Date(article.created_at).toLocaleDateString('ru-RU', {
-                              day: 'numeric',
-                              month: 'long',
-                              year: 'numeric'
-                            })
+                          : ''
                         }
                         <span style={{ color: '#000000' }}> ]</span>
                       </p>

@@ -1,103 +1,34 @@
 import { supabase } from '@/config/supabase'
-import { getCache, setCache, hasValidCache } from '@/utils/cache'
 
-// ========== HELPER: Retry with timeout and cache ==========
+// ========== HELPER: Retry with timeout ==========
 
 /**
- * Выполняет запрос с повторными попытками, экспоненциальной задержкой, таймаутом и кэшированием
+ * Выполняет запрос с повторными попытками, экспоненциальной задержкой и таймаутом.
+ * Кэширование выполняется на уровне Zustand stores (в памяти, TTL 5 минут).
  * @param {Function} requestFn - Функция запроса
  * @param {Object} options - Опции запроса
  * @param {number} options.maxRetries - Максимальное количество попыток (по умолчанию 4)
  * @param {number} options.timeout - Таймаут в миллисекундах (по умолчанию 45000)
- * @param {string} options.resourceName - Название ресурса для логирования и кэширования
- * @param {string} options.cacheParams - Параметры для уникальности кэша (опционально)
- * @param {number} options.cacheTTL - Время жизни кэша в миллисекундах (по умолчанию 1 час)
- * @param {boolean} options.useCache - Использовать ли кэш (по умолчанию true)
+ * @param {string} options.resourceName - Название ресурса для сообщений об ошибках
  * @returns {Promise} Результат запроса
  */
 const fetchWithRetry = async (
   requestFn,
-  {
-    maxRetries = 4,
-    timeout = 45000, // 45 секунд для нестабильных соединений
-    resourceName = 'данные',
-    cacheParams = '',
-    cacheTTL = 3600000, // 1 час по умолчанию
-    useCache = true,
-  } = {}
-) => {
-  let lastError = null
-
-  // Пытаемся получить данные из кэша перед запросом (только если useCache = true)
-  if (useCache) {
-    const cachedData = getCache(resourceName, cacheParams)
-    if (cachedData !== null) {
-      // Есть валидный кэш, но все равно пытаемся обновить данные в фоне
-      // Возвращаем кэш сразу, но продолжаем попытки обновления
-      const updatePromise = fetchWithRetryInternal(requestFn, {
-        maxRetries,
-        timeout,
-        resourceName,
-        cacheParams,
-        cacheTTL,
-        useCache: false, // Не используем кэш для фонового обновления
-      }).catch(() => {
-        // Игнорируем ошибки фонового обновления
-      })
-
-      // Не ждем обновления, возвращаем кэш
-      updatePromise.catch(() => {}) // Подавляем необработанные ошибки
-      return cachedData
-    }
-  }
-
-  return fetchWithRetryInternal(requestFn, {
-    maxRetries,
-    timeout,
-    resourceName,
-    cacheParams,
-    cacheTTL,
-    useCache,
-  })
-}
-
-/**
- * Внутренняя функция для выполнения запроса с retry
- */
-const fetchWithRetryInternal = async (
-  requestFn,
-  {
-    maxRetries,
-    timeout,
-    resourceName,
-    cacheParams,
-    cacheTTL,
-    useCache,
-  }
+  { maxRetries = 4, timeout = 45000, resourceName = 'данные' } = {}
 ) => {
   let lastError = null
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      // Создаем промис с таймаутом
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error('Request timeout')), timeout)
       })
-
       const requestPromise = requestFn()
       const result = await Promise.race([requestPromise, timeoutPromise])
-
-      // Успешный запрос - сохраняем в кэш
-      if (useCache && result !== null && result !== undefined) {
-        setCache(resourceName, result, cacheParams, cacheTTL)
-      }
-
       return result
     } catch (error) {
       lastError = error
-      
-      // Проверяем тип ошибки
-      const isNetworkError = 
+      const isNetworkError =
         error.message?.includes('timeout') ||
         error.message?.includes('network') ||
         error.message?.includes('connection') ||
@@ -108,41 +39,17 @@ const fetchWithRetryInternal = async (
         error.message?.includes('Network connection lost') ||
         error.name === 'TypeError' ||
         (error.code && ['ECONNRESET', 'ETIMEDOUT', 'ENOTFOUND'].includes(error.code))
-
-      const isCorsError = 
+      const isCorsError =
         error.message?.includes('access control') ||
         error.message?.includes('CORS') ||
         error.message?.includes('cross-origin')
 
-      // Если это CORS ошибка, не повторяем
       if (isCorsError) {
-        // Пытаемся вернуть кэш перед ошибкой
-        if (useCache) {
-          const cachedData = getCache(resourceName, cacheParams)
-          if (cachedData !== null) {
-            console.warn(`Используем кэшированные данные для ${resourceName} из-за CORS ошибки`)
-            return cachedData
-          }
-        }
         throw new Error(
           'Ошибка доступа к серверу. Проверьте настройки CORS в Supabase или попробуйте позже.'
         )
       }
-
-      // Если это последняя попытка
       if (attempt === maxRetries) {
-        // Пытаемся вернуть кэш при сетевой ошибке
-        if (isNetworkError && useCache) {
-          const cachedData = getCache(resourceName, cacheParams)
-          if (cachedData !== null) {
-            console.warn(
-              `Не удалось загрузить ${resourceName} с сервера. Используем кэшированные данные.`
-            )
-            return cachedData
-          }
-        }
-
-        // Если кэша нет, выбрасываем ошибку
         if (isNetworkError) {
           throw new Error(
             `Не удалось загрузить ${resourceName}. Проверьте интернет-соединение и попробуйте обновить страницу.`
@@ -150,32 +57,22 @@ const fetchWithRetryInternal = async (
         }
         break
       }
-
-      // Если ошибка связана с сетью, повторяем попытку с экспоненциальной задержкой
       if (isNetworkError) {
-        // Экспоненциальная задержка: 1s, 2s, 4s, 8s
         const delay = Math.min(1000 * Math.pow(2, attempt - 1), 8000)
-        
         if (attempt < maxRetries) {
           console.warn(
             `Попытка ${attempt}/${maxRetries} загрузки ${resourceName} не удалась. Повтор через ${delay / 1000}с...`
           )
         }
-        
         await new Promise(resolve => setTimeout(resolve, delay))
         continue
       }
-
-      // Для других ошибок не повторяем
       throw error
     }
   }
 
-  // Формируем понятное сообщение об ошибке
   const errorMessage = lastError?.message || 'Неизвестная ошибка'
-  throw new Error(
-    `Не удалось загрузить ${resourceName}. ${errorMessage}`
-  )
+  throw new Error(`Не удалось загрузить ${resourceName}. ${errorMessage}`)
 }
 
 // ========== PRODUCTS ==========
@@ -188,7 +85,6 @@ export const getProducts = async () => {
   if (!supabase) {
     throw new Error('Supabase не настроен')
   }
-
   return fetchWithRetry(
     async () => {
       const { data, error } = await supabase
@@ -197,18 +93,10 @@ export const getProducts = async () => {
         .order('display_order', { ascending: true })
         .order('created_at', { ascending: false })
         .limit(1000)
-      
-      if (error) {
-        throw error
-      }
+      if (error) throw error
       return data || []
     },
-    {
-      maxRetries: 4,
-      timeout: 45000,
-      resourceName: 'products',
-      cacheTTL: 3600000, // 1 час
-    }
+    { maxRetries: 4, timeout: 45000, resourceName: 'products' }
   )
 }
 
@@ -251,13 +139,7 @@ export const getProduct = async (id) => {
       
       return data
     },
-    {
-      maxRetries: 4,
-      timeout: 45000,
-      resourceName: 'product',
-      cacheParams: id,
-      cacheTTL: 3600000, // 1 час
-    }
+    { maxRetries: 4, timeout: 45000, resourceName: 'product' }
   )
 }
 
@@ -296,13 +178,7 @@ export const getProductBySlug = async (slug) => {
       
       return data
     },
-    {
-      maxRetries: 4,
-      timeout: 45000,
-      resourceName: 'product-by-slug',
-      cacheParams: slug,
-      cacheTTL: 3600000, // 1 час
-    }
+    { maxRetries: 4, timeout: 45000, resourceName: 'product-by-slug' }
   )
 }
 
@@ -418,11 +294,14 @@ export const updateProductOrder = async (orderUpdates) => {
 
 // ========== ARTICLES ==========
 
+/**
+ * Get all articles
+ * @returns {Promise<Array>} Array of articles
+ */
 export const getArticles = async () => {
   if (!supabase) {
     throw new Error('Supabase не настроен')
   }
-
   return fetchWithRetry(
     async () => {
       const { data, error } = await supabase
@@ -431,18 +310,10 @@ export const getArticles = async () => {
         .order('display_order', { ascending: true })
         .order('created_at', { ascending: false })
         .limit(1000)
-      
-      if (error) {
-        throw error
-      }
+      if (error) throw error
       return data || []
     },
-    {
-      maxRetries: 4,
-      timeout: 45000,
-      resourceName: 'articles',
-      cacheTTL: 3600000, // 1 час
-    }
+    { maxRetries: 4, timeout: 45000, resourceName: 'articles' }
   )
 }
 
@@ -492,13 +363,7 @@ export const getArticleBySlug = async (slug) => {
       
       return data
     },
-    {
-      maxRetries: 4,
-      timeout: 45000,
-      resourceName: 'article-by-slug',
-      cacheParams: slug,
-      cacheTTL: 3600000, // 1 час
-    }
+    { maxRetries: 4, timeout: 45000, resourceName: 'article-by-slug' }
   )
 }
 
@@ -596,34 +461,18 @@ export const getProjects = async () => {
   if (!supabase) {
     throw new Error('Supabase не настроен')
   }
-
   return fetchWithRetry(
     async () => {
-      // Получаем проекты с информацией о продуктах (включая slug)
       const { data: projects, error } = await supabase
         .from('projects')
         .select('id, name, seats_count, product_id, images, created_at, display_order, description, upholstery_variant, products(id, name, slug)')
         .order('display_order', { ascending: true })
         .order('created_at', { ascending: false })
         .limit(1000)
-      
-      if (error) {
-        throw error
-      }
-
-      if (!projects || projects.length === 0) {
-        return []
-      }
-
-      // Продукты уже загружены через JOIN, возвращаем проекты
+      if (error) throw error
       return projects || []
     },
-    {
-      maxRetries: 4,
-      timeout: 45000,
-      resourceName: 'projects',
-      cacheTTL: 3600000, // 1 час
-    }
+    { maxRetries: 4, timeout: 45000, resourceName: 'projects' }
   )
 }
 
@@ -753,7 +602,6 @@ export const getFAQs = async () => {
   if (!supabase) {
     throw new Error('Supabase не настроен')
   }
-
   return fetchWithRetry(
     async () => {
       const { data, error } = await supabase
@@ -761,18 +609,10 @@ export const getFAQs = async () => {
         .select('id, question, answer, display_order, is_active, created_at')
         .order('display_order', { ascending: true })
         .limit(1000)
-      
-      if (error) {
-        throw error
-      }
+      if (error) throw error
       return data || []
     },
-    {
-      maxRetries: 4,
-      timeout: 45000,
-      resourceName: 'faq',
-      cacheTTL: 3600000, // 1 час
-    }
+    { maxRetries: 4, timeout: 45000, resourceName: 'faq' }
   )
 }
 
@@ -908,7 +748,6 @@ export const getFAQLinks = async () => {
   if (!supabase) {
     throw new Error('Supabase не настроен')
   }
-
   return fetchWithRetry(
     async () => {
       const { data, error } = await supabase
@@ -916,18 +755,10 @@ export const getFAQLinks = async () => {
         .select('id, name, document_url, rich_text, display_order, is_active, is_internal_page, page_content, created_at')
         .order('display_order', { ascending: true })
         .limit(1000)
-      
-      if (error) {
-        throw error
-      }
+      if (error) throw error
       return data || []
     },
-    {
-      maxRetries: 4,
-      timeout: 45000,
-      resourceName: 'faq-links',
-      cacheTTL: 3600000, // 1 час
-    }
+    { maxRetries: 4, timeout: 45000, resourceName: 'faq-links' }
   )
 }
 
@@ -1055,7 +886,6 @@ export const getPresentation = async () => {
   if (!supabase) {
     throw new Error('Supabase не настроен')
   }
-
   return fetchWithRetry(
     async () => {
       const { data, error } = await supabase
@@ -1063,18 +893,10 @@ export const getPresentation = async () => {
         .select('id, name, document_url, created_at, updated_at')
         .limit(1)
         .maybeSingle()
-      
-      if (error) {
-        throw error
-      }
+      if (error) throw error
       return data
     },
-    {
-      maxRetries: 4,
-      timeout: 45000,
-      resourceName: 'presentation',
-      cacheTTL: 3600000, // 1 час
-    }
+    { maxRetries: 4, timeout: 45000, resourceName: 'presentation' }
   )
 }
 
@@ -1150,7 +972,6 @@ export const getUpholsteryVariants = async () => {
   if (!supabase) {
     throw new Error('Supabase не настроен')
   }
-
   return fetchWithRetry(
     async () => {
       const { data, error } = await supabase
@@ -1158,18 +979,10 @@ export const getUpholsteryVariants = async () => {
         .select('id, name, color, image_url, created_at, collection_id, upholstery_collections(id, name)')
         .order('created_at', { ascending: false })
         .limit(1000)
-      
-      if (error) {
-        throw error
-      }
+      if (error) throw error
       return data || []
     },
-    {
-      maxRetries: 4,
-      timeout: 45000,
-      resourceName: 'upholstery-variants',
-      cacheTTL: 3600000, // 1 час
-    }
+    { maxRetries: 4, timeout: 45000, resourceName: 'upholstery-variants' }
   )
 }
 
@@ -1262,7 +1075,6 @@ export const getUpholsteryCollections = async () => {
   if (!supabase) {
     throw new Error('Supabase не настроен')
   }
-
   return fetchWithRetry(
     async () => {
       const { data, error } = await supabase
@@ -1270,18 +1082,10 @@ export const getUpholsteryCollections = async () => {
         .select('*')
         .order('display_order', { ascending: true })
         .order('name', { ascending: true })
-      
-      if (error) {
-        throw error
-      }
+      if (error) throw error
       return data || []
     },
-    {
-      maxRetries: 4,
-      timeout: 45000,
-      resourceName: 'upholstery-collections',
-      cacheTTL: 3600000, // 1 час
-    }
+    { maxRetries: 4, timeout: 45000, resourceName: 'upholstery-collections' }
   )
 }
 
@@ -1435,30 +1239,18 @@ export const getUpholsteryColors = async () => {
   if (!supabase) {
     throw new Error('Supabase не настроен')
   }
-
   return fetchWithRetry(
     async () => {
       const { data, error } = await supabase
         .from('upholstery_variants')
         .select('color')
         .not('color', 'is', null)
-      
-      if (error) {
-        throw error
-      }
-      
-      // Получаем уникальные цвета и сортируем
+      if (error) throw error
       const uniqueColors = [...new Set(data.map(v => v.color).filter(Boolean))]
         .sort((a, b) => a.localeCompare(b, 'ru'))
-      
       return uniqueColors
     },
-    {
-      maxRetries: 4,
-      timeout: 45000,
-      resourceName: 'upholstery-colors',
-      cacheTTL: 3600000, // 1 час
-    }
+    { maxRetries: 4, timeout: 45000, resourceName: 'upholstery-colors' }
   )
 }
 

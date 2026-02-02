@@ -1,6 +1,7 @@
 /**
- * Утилита для кэширования данных в localStorage
- * Используется для сохранения данных при нестабильном соединении с Supabase
+ * Утилита для кэширования данных в localStorage.
+ * Используется для кэширования тяжелых ресурсов (3D-модели, изображения, HDR-окружения).
+ * API-ответы кэшируются в памяти через Zustand stores с TTL 5 минут.
  */
 
 const CACHE_PREFIX = 'robustino_cache_'
@@ -132,6 +133,26 @@ export const clearCache = (resourceName, params = '') => {
     localStorage.removeItem(cacheKey)
   } catch (error) {
     console.warn('Ошибка при очистке кэша:', error)
+  }
+}
+
+/**
+ * Удаляет весь кэш для ресурса по префиксу (все ключи resourceName, resourceName_param1, …).
+ * Нужно при сбросе кэша статей/продуктов: список очищается одним ключом, а отдельные
+ * записи (по slug) — разными ключами, их все сбрасываем по префиксу.
+ * @param {string} resourceName - Название ресурса (например, 'article-by-slug')
+ */
+export const clearCacheByResourcePrefix = (resourceName) => {
+  try {
+    const prefix = `${CACHE_PREFIX}${resourceName}`
+    const keys = Object.keys(localStorage)
+    keys.forEach(key => {
+      if (key.startsWith(prefix)) {
+        localStorage.removeItem(key)
+      }
+    })
+  } catch (error) {
+    console.warn('Ошибка при очистке кэша по префиксу:', error)
   }
 }
 

@@ -5,8 +5,11 @@ import {
   getOrCreateCollection,
   createUpholsteryCollection, 
   updateUpholsteryCollection, 
-  deleteUpholsteryCollection 
+  deleteUpholsteryCollection,
 } from '@utils/api'
+
+// TTL для кэша в памяти (5 минут)
+const CACHE_TTL = 5 * 60 * 1000
 
 /**
  * Upholstery Collections store using Zustand
@@ -17,29 +20,33 @@ const useCollectionsStore = create((set, get) => ({
   loading: false,
   error: null,
   lastFetched: null,
-  cacheTTL: 30000, // 30 секунд кэш
-  fetchAbortFlag: null, // Флаг для отмены запросов
+  fetchAbortFlag: null,
 
-  // Fetch all collections
+  // Fetch all collections с умным кэшированием и stale-while-revalidate
   fetchCollections: async (force = false) => {
     const state = get()
     
-    // Проверяем кэш, если не принудительная загрузка
-    if (!force && state.lastFetched && state.collections.length > 0) {
-      const cacheAge = Date.now() - state.lastFetched
-      if (cacheAge < state.cacheTTL) {
-        return
-      }
-    }
-
-    // Отменяем предыдущий запрос, если он еще выполняется
+    // Отменяем предыдущий запрос если есть
     if (state.fetchAbortFlag) {
       state.fetchAbortFlag.cancelled = true
     }
-
-    // Создаем новый флаг отмены
+    
+    // Проверяем свежесть кэша
+    const hasData = state.collections.length > 0
+    const cacheAge = state.lastFetched ? Date.now() - state.lastFetched : Infinity
+    const isCacheFresh = cacheAge < CACHE_TTL
+    
+    // Если кэш свежий и не форсируем обновление - возвращаем из кэша
+    if (!force && hasData && isCacheFresh) {
+      console.log(`[Collections] Using cache (age: ${Math.round(cacheAge / 1000)}s)`)
+      return
+    }
+    
+    // Stale-while-revalidate: показываем старые данные сразу, обновляем в фоне
+    const showLoader = !hasData // Loader только если нет данных вообще
+    
     const abortFlag = { cancelled: false }
-    set({ loading: true, error: null, fetchAbortFlag: abortFlag })
+    set({ loading: showLoader, error: null, fetchAbortFlag: abortFlag })
 
     try {
       const collections = await getUpholsteryCollections()
@@ -49,12 +56,20 @@ const useCollectionsStore = create((set, get) => ({
       }
 
       set({ collections, loading: false, lastFetched: Date.now(), fetchAbortFlag: null })
+      console.log('[Collections] Data refreshed from server')
     } catch (error) {
       if (abortFlag.cancelled) {
         return
       }
-      console.error('Ошибка загрузки коллекций:', error)
-      set({ error: error.message, loading: false, fetchAbortFlag: null })
+      
+      // Если есть старые данные - оставляем их, только логируем ошибку
+      if (hasData) {
+        console.warn('[Collections] Failed to refresh, using stale data:', error.message)
+        set({ loading: false, fetchAbortFlag: null })
+      } else {
+        console.error('Ошибка загрузки коллекций:', error)
+        set({ error: error.message, loading: false, fetchAbortFlag: null })
+      }
     }
   },
 
@@ -78,7 +93,7 @@ const useCollectionsStore = create((set, get) => ({
       const collection = await getOrCreateCollection(name)
       // Обновляем список коллекций, если была создана новая
       if (collection) {
-        await get().fetchCollections(true)
+        await get().fetchCollections()
       }
       return collection
     } catch (error) {
@@ -94,7 +109,7 @@ const useCollectionsStore = create((set, get) => ({
       const newCollection = await createUpholsteryCollection(collectionData)
       set((state) => ({
         collections: [newCollection, ...state.collections],
-        lastFetched: null // Инвалидируем кэш
+        lastFetched: Date.now() // Обновляем timestamp кэша
       }))
       return newCollection
     } catch (error) {
@@ -111,7 +126,7 @@ const useCollectionsStore = create((set, get) => ({
       set((state) => ({
         collections: state.collections.map((c) => (c.id === id ? updatedCollection : c)),
         currentCollection: state.currentCollection?.id === id ? updatedCollection : state.currentCollection,
-        lastFetched: null // Инвалидируем кэш
+        lastFetched: null // Инвалидируем кэш - следующий fetch обновит данные
       }))
       return updatedCollection
     } catch (error) {
@@ -128,7 +143,7 @@ const useCollectionsStore = create((set, get) => ({
       set((state) => ({
         collections: state.collections.filter((c) => c.id !== id),
         currentCollection: state.currentCollection?.id === id ? null : state.currentCollection,
-        lastFetched: null // Инвалидируем кэш
+        lastFetched: Date.now() // Обновляем timestamp кэша
       }))
     } catch (error) {
       console.error('Ошибка удаления коллекции:', error)
