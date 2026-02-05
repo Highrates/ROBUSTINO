@@ -979,6 +979,34 @@ const Product = () => {
                     })}
                   </div>
                 )}
+
+                {/* Ссылки: PDF и 3D модель */}
+                <div style={{ display: 'flex', flexDirection: 'row', gap: '8px', flexWrap: 'wrap' }}>
+                  <a
+                    href={currentProduct?.document_url || '#'}
+                    target={currentProduct?.document_url ? '_blank' : undefined}
+                    rel={currentProduct?.document_url ? 'noopener noreferrer' : undefined}
+                    style={{ fontFamily: 'Commissioner', fontSize: '14px', fontWeight: 450, textTransform: 'uppercase', textDecoration: 'none', color: '#fff', cursor: currentProduct?.document_url ? 'pointer' : 'default', opacity: currentProduct?.document_url ? 1 : 0.6, transition: 'opacity 0.3s ease' }}
+                    onMouseEnter={(e) => currentProduct?.document_url && (e.currentTarget.style.opacity = '0.7')}
+                    onMouseLeave={(e) => currentProduct?.document_url && (e.currentTarget.style.opacity = '1')}
+                  >
+                    <span style={{ color: 'rgba(255,255,255,0.7)' }}>[ </span>
+                    <span>Презентация кресла PDF</span>
+                    <span style={{ color: 'rgba(255,255,255,0.7)' }}> ]</span>
+                  </a>
+                  <a
+                    href={currentProduct?.model_url || '#'}
+                    target={currentProduct?.model_url ? '_blank' : undefined}
+                    rel={currentProduct?.model_url ? 'noopener noreferrer' : undefined}
+                    style={{ fontFamily: 'Commissioner', fontSize: '14px', fontWeight: 450, textTransform: 'uppercase', textDecoration: 'none', color: '#fff', cursor: currentProduct?.model_url ? 'pointer' : 'default', opacity: currentProduct?.model_url ? 1 : 0.6, transition: 'opacity 0.3s ease' }}
+                    onMouseEnter={(e) => currentProduct?.model_url && (e.currentTarget.style.opacity = '0.7')}
+                    onMouseLeave={(e) => currentProduct?.model_url && (e.currentTarget.style.opacity = '1')}
+                  >
+                    <span style={{ color: 'rgba(255,255,255,0.7)' }}>[ </span>
+                    <span>Загрузить 3D модель</span>
+                    <span style={{ color: 'rgba(255,255,255,0.7)' }}> ]</span>
+                  </a>
+                </div>
               </div>
 
               {/* Right Column */}

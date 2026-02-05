@@ -32,17 +32,6 @@ const Footer = () => {
             {/* @Robustino */}
             <span style={{ fontFamily: 'Commissioner', fontSize: '14px', fontWeight: 450, color: '#363636', textTransform: 'uppercase' }}>@Robustino</span>
 
-            {/* Telegram */}
-            <a 
-              href="https://t.me/robustino" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              style={{ fontFamily: 'Commissioner', fontSize: '14px', fontWeight: 450, textTransform: 'uppercase', textDecoration: 'none', color: '#363636', cursor: 'pointer', transition: 'opacity 0.3s ease' }}
-              onMouseEnter={(e) => e.currentTarget.style.opacity = '0.7'}
-              onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
-            >
-              TELEGRAM
-            </a>
           </div>
         </div>
       </div>

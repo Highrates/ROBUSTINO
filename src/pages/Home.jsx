@@ -997,14 +997,14 @@ const Home = () => {
               >
                 {/* Мобильная версия: "И" на второй строке */}
                 <span className="md:hidden">
-                  Надежные<br />
-                  и Стильные<br />
+                  Стильные<br />
+                  и Надежные<br />
                   кресла для залов -<br />
                   Robustino
                 </span>
                 {/* Десктоп версия: оригинальное разбиение */}
                 <span className="hidden md:inline">
-                Надежные и Стильные<br />
+                Стильные и Надежные<br />
                 кресла для залов -<br />
                 Robustino
                 </span>
@@ -1041,31 +1041,30 @@ const Home = () => {
                 </Link>
               </div>
               
-              <h1 ref={aboutTextRef} className="about-text">
-                {/* Мобильная версия: без переноса "И" */}
+              <h1 ref={aboutTextRef} className="about-text uppercase">
                 <span className="md:hidden">
-                  БЛАГОДАРЯ СОВРЕМЕННЫМ
+                  ПЕРЕДОВОЙ ДИЗАЙН И
                   <img className="inline-icon" src="/about-pic1.png" alt="" />
-                  ТЕХНОЛОГИЯМ И
+                  КОМФОРТ<br />
+                  СОВРЕМЕННЫЕ ТЕХНОЛОГИ, ECO RECYCLING<br />
+                  ВЫСОКИЙ
                   <img className="inline-icon" src="/about-pic2.png" alt="" />
-                  УНИКАЛЬНЫМ МЕТОДАМ ПРОИЗВОДСТВА
-                  НАШИ КРЕСЛА СОЧЕТАЮТ ВЫСОКОЕ КАЧЕСТВО,
-                  КОМФОРТ И
+                  РЕСУРС И БЕЗОПАСНОСТЬ<br />
+                  ТЕХНИЧЕСКАЯ ПОДДЕРЖКА ПРОЕКТИРОВАНИЯ<br />
+                  И ЭКСПЛУАТАЦИИ
                   <img className="inline-icon" src="/about-pic1.png" alt="" />
-                  БЕЗОПАСНОСТЬ ПРИ РАЗУМНОЙ СТОИМОСТИ
                 </span>
-                {/* Десктоп версия: "И" на второй строке */}
                 <span className="hidden md:inline">
-                  БЛАГОДАРЯ СОВРЕМЕННЫМ
+                  ПЕРЕДОВОЙ ДИЗАЙН И
                   <img className="inline-icon" src="/about-pic1.png" alt="" />
-                  ТЕХНОЛОГИЯМ<br />
-                  И
+                  КОМФОРТ<br />
+                  СОВРЕМЕННЫЕ ТЕХНОЛОГИ, ECO RECYCLING<br />
+                  ВЫСОКИЙ
                   <img className="inline-icon" src="/about-pic2.png" alt="" />
-                  УНИКАЛЬНЫМ МЕТОДАМ ПРОИЗВОДСТВА
-                  НАШИ КРЕСЛА СОЧЕТАЮТ ВЫСОКОЕ КАЧЕСТВО,
-                  КОМФОРТ И
+                  РЕСУРС И БЕЗОПАСНОСТЬ<br />
+                  ТЕХНИЧЕСКАЯ ПОДДЕРЖКА ПРОЕКТИРОВАНИЯ<br />
+                  И ЭКСПЛУАТАЦИИ
                   <img className="inline-icon" src="/about-pic1.png" alt="" />
-                  БЕЗОПАСНОСТЬ ПРИ РАЗУМНОЙ СТОИМОСТИ
                 </span>
               </h1>
             </div>
@@ -1083,7 +1082,7 @@ const Home = () => {
                   <div className="products-title-block flex items-center gap-14">
                     <h4 className="second-title">Продукция</h4>
                     <p className="products-description">
-                      Мы производим и торгуем мебелью с 2007 года. Проектируем офисные и общественные помещения, в том числе актовые, театральные, конференц, кинозалы, аэровокзалы, медицинские учреждения.
+                      Российское производство кресел для аудиторий с 2007 г. Специализируемся в области оснащения креслами общественных залов. Театральные, Актовые , Конференц и Концертные залы - наша профессия. Производимой продукцией оснащаются современные школы, университеты, больницы, крупные предприятия и их социальная среда, аэропорты и стадионы.
                     </p>
                   </div>
                   <Link ref={productsLinkBlockRef} to="/products" className="link-block flex items-center gap-3">
@@ -1164,19 +1163,18 @@ const Home = () => {
               </div>
               <div className="projects-content flex flex-col gap-14">
                 <p ref={projectsDescriptionRef} className="projects-description-text">
-                  К 2025 году мы реализовали более 100 проектов в разных регионах России. Среди них Большой Театр 
-                  в Москве, Мариинский театр Санкт-Петербурга, Новосибирский НОВАТ и многие другие объекты
+                  К 2026 году мы реализовали более 500 проектов<br />в разных регионах России и за рубежом. Среди них МГУ, МГТУ им. Баумана, СПбГУ, Сургутнефтегаз, Лукойл, Моя поликлиника, ММНКЦ им. Боткина, Сбербанк, Центробанк и множество других объектов
                 </p>
                 <div ref={projectsListRef} className="projects-list">
                   {/* Первая колонка */}
                   <div className="projects-list-column first-column-wrapper">
                     <div className="first-column flex flex-col gap-10">
                       <div className="first-column-titles flex flex-col gap-3">
-                        <span className="first-column-number">1000+</span>
+                        <span className="first-column-number">500+</span>
                         <p className="product-type">реализованных объектов</p>
                       </div>
                       <div className="first-column-titles flex flex-col gap-3">
-                        <span className="first-column-number">1728</span>
+                        <span className="first-column-number">70 000+</span>
                         <p className="product-type">произведенных кресел</p>
                       </div>
                     </div>

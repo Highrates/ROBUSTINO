@@ -23,9 +23,7 @@ const ContactsSection = () => {
                   onMouseEnter={(e) => e.currentTarget.style.opacity = '0.7'}
                   onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
                 >
-                  <span style={{ color: '#363636' }}>[ </span>
                   <span style={{ color: '#A9A9A9', textTransform: 'uppercase', letterSpacing: '0.1px' }}>info@ratco.ru</span>
-                  <span style={{ color: '#363636' }}> ]</span>
                 </a>
                 <a 
                   href="tel:+78002509468" 
@@ -34,9 +32,7 @@ const ContactsSection = () => {
                   onMouseEnter={(e) => e.currentTarget.style.opacity = '0.7'}
                   onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
                 >
-                  <span style={{ color: '#363636' }}>[ </span>
                   <span style={{ color: '#A9A9A9' }}>8 (800) 250‒94‒68</span>
-                  <span style={{ color: '#363636' }}> ]</span>
                 </a>
               </div>
 
@@ -60,7 +56,8 @@ const ContactsSection = () => {
                   <div className="address-block flex flex-col gap-[8px]">
                     <p className="product-type" style={{ margin: 0 }}>адрес:</p>
                     <p style={{ fontFamily: 'Commissioner', fontSize: '15px', fontWeight: 400, color: '#363636', margin: 0, lineHeight: '1.6' }}>
-                      Салон-Магазин - г. Обнинск, бизнес-центр "Обнинский", Киевское шоссе д. 11-б, офис 204.
+                      Шоурум<br />
+                      Бизнес-центр "Обнинский", Киевское шоссе д. 11-б, офис 204, г. Обнинск, Россия
                     </p>
                   </div>
 

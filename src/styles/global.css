@@ -180,7 +180,7 @@ h1, h2, h3, h4, h5, h6 {
     font-weight: 400;
     color: #363636;
     margin: 0;
-    max-width: 380px;
+    max-width: 480px;
   }
 
   /* Products scroll container */
@@ -258,7 +258,7 @@ h1, h2, h3, h4, h5, h6 {
     line-height: 29px;
     color: #363636;
     margin: 0;
-    max-width: 584px;
+    max-width: 624px;
   }
 
   /* Projects list */
