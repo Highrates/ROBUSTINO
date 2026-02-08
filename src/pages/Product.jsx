@@ -9,6 +9,7 @@ import ModelViewer from '@components/3d/ModelViewer'
 import useProductsStore from '@store/productsStore'
 import useUpholsteryStore from '@store/upholsteryStore'
 import useProjectsStore from '@store/projectsStore'
+import { getProductProjects } from '@utils/api'
 import Loader from '@components/common/Loader'
 
 // Register ScrollTrigger plugin
@@ -34,6 +35,8 @@ const Product = () => {
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false)
   const [isProjectModalClosing, setIsProjectModalClosing] = useState(false)
   const projectModalCloseTimerRef = useRef(null)
+  // Проекты, привязанные к продукту через product_projects (из админки «Реализованные объекты»)
+  const [productProjects, setProductProjects] = useState([])
   
   // Refs для анимаций
   const productSectionRef = useRef(null)
@@ -79,12 +82,36 @@ const Product = () => {
     }
   }, [fetchVariants, upholsteryVariants.length])
 
-  // Загружаем проекты для отображения реализованных объектов
+  // Загружаем проекты для модального окна (список всех проектов)
   useEffect(() => {
     if (projects.length === 0) {
       fetchProjects()
     }
   }, [fetchProjects, projects.length])
+
+  // Загружаем проекты, привязанные к продукту через «Реализованные объекты» в админке
+  useEffect(() => {
+    if (!currentProduct?.id) {
+      setProductProjects([])
+      return
+    }
+    let cancelled = false
+    getProductProjects(currentProduct.id)
+      .then((projectsList) => {
+        if (!cancelled) {
+          setProductProjects(projectsList || [])
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          console.error('Ошибка загрузки проектов продукта:', err)
+          setProductProjects([])
+        }
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [currentProduct?.id])
 
   // Загружаем продукт при монтировании или изменении slug
   useEffect(() => {
@@ -491,11 +518,7 @@ const Product = () => {
     return products.find(p => p?.id === currentProduct.parent_product_id && p?.status === 'published') || null
   }, [currentProduct?.parent_product_id, products])
 
-  // Реализованные проекты с этой моделью
-  const productProjects = useMemo(() => {
-    if (!currentProduct?.id || !projects?.length) return []
-    return projects.filter(project => project?.product_id === currentProduct.id)
-  }, [currentProduct?.id, projects])
+  // productProjects загружаются через getProductProjects (таблица product_projects)
 
   // Открытие просмотра изображения
   const handleOpenImageViewer = (images, startIndex = 0) => {
