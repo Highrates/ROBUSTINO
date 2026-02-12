@@ -30,6 +30,7 @@ const knownColorMap = {
   'Светло-серый': '#D3D3D3',
   'Темно-серый': '#A9A9A9',
   'Кремовый': '#FFFDD0',
+  'Бордовый': '#800020',
 }
 
 // Функция для генерации цвета из строки (hash-based)
@@ -95,34 +96,51 @@ const Upholstery = () => {
     loadColors()
   }, [])
 
-  // Фильтруем и сортируем варианты по выбранным цветам
-  const filteredVariants = useMemo(() => {
-    if (selectedColors.length === 0) {
-      return variants
-    }
-    
-    // Разделяем на выбранные и невыбранные
-    const selected = []
-    const unselected = []
-    
+  // Без фильтра по цвету: группируем по коллекциям для отображения секциями.
+  // С фильтром по цвету: только подходящие варианты, плоский список.
+  const collectionGroups = useMemo(() => {
+    if (selectedColors.length > 0) return null
+    const byCollection = new Map()
     variants.forEach(variant => {
-      if (variant.color && selectedColors.includes(variant.color)) {
-        selected.push(variant)
-      } else {
-        unselected.push(variant)
+      const col = variant.upholstery_collections
+      const key = col?.id ?? 'no-collection'
+      const name = col?.name ?? 'Без коллекции'
+      if (!byCollection.has(key)) {
+        byCollection.set(key, { name, variants: [] })
       }
+      byCollection.get(key).variants.push(variant)
     })
-    
-    // Возвращаем выбранные первыми, затем остальные
-    return [...selected, ...unselected]
+    return Array.from(byCollection.entries())
+      .sort((a, b) => a[1].name.localeCompare(b[1].name, 'ru'))
+      .map(([key, g]) => ({ ...g, key }))
   }, [variants, selectedColors])
+
+  const filteredVariants = useMemo(() => {
+    const norm = (s) => String(s ?? '').trim()
+    if (selectedColors.length > 0) {
+      const matching = variants.filter((v) => {
+        const vColor = norm(v.color)
+        return vColor && selectedColors.some((c) => norm(c) === vColor)
+      })
+      return [...matching].sort((a, b) => {
+        const colorOrderA = selectedColors.findIndex((c) => norm(c) === norm(a.color))
+        const colorOrderB = selectedColors.findIndex((c) => norm(c) === norm(b.color))
+        if (colorOrderA !== colorOrderB) return colorOrderA - colorOrderB
+        return (a.name || '').localeCompare(b.name || '')
+      })
+    }
+    return collectionGroups ? collectionGroups.flatMap((g) => g.variants) : []
+  }, [variants, selectedColors, collectionGroups])
 
   // Подсчитываем количество видимых вариантов
   const visibleVariantsCount = useMemo(() => {
     if (selectedColors.length === 0) {
       return variants.length
     }
-    return variants.filter(v => v.color && selectedColors.includes(v.color)).length
+    const norm = (s) => String(s ?? '').trim()
+    return variants.filter(
+      (v) => norm(v.color) && selectedColors.some((c) => norm(c) === norm(v.color))
+    ).length
   }, [variants, selectedColors])
 
   // Проверяем настройки пользователя для уменьшенного движения
@@ -247,66 +265,24 @@ const Upholstery = () => {
     }
   }, [loading, prefersReducedMotion]) // Убрали filteredVariants.length из зависимостей, чтобы анимации не перезапускались при фильтрации
 
-  // Обработка изменений фильтрации (показываем/скрываем карточки без перезапуска анимаций)
+  // При смене фильтра по цвету новые карточки в DOM имеют opacity: 0 из CSS — делаем их видимыми
+  const hasFilter = selectedColors.length > 0
+  const displayKey = hasFilter ? `filtered-${selectedColors.join(',')}` : 'grouped'
+  const prevDisplayKeyRef = useRef(null)
   useEffect(() => {
-    if (!upholsteryGridRef.current || loading) return
-
-    const allCards = upholsteryGridRef.current.querySelectorAll('.upholstery-card')
-    if (allCards.length === 0) return
-
-    // Если нет выбранных цветов, показываем все карточки
-    if (selectedColors.length === 0) {
-      allCards.forEach((card) => {
-        card.style.pointerEvents = 'auto'
-        gsap.to(card, {
-          opacity: 1,
-          x: 0,
-          scale: 1,
-          duration: 0.3,
-          ease: 'power2.out'
-        })
-      })
-      return
+    if (prefersReducedMotion || loading) return
+    const prev = prevDisplayKeyRef.current
+    prevDisplayKeyRef.current = displayKey
+    if (prev != null && prev !== displayKey) {
+      const timeoutId = setTimeout(() => {
+        const cards = upholsteryGridRef.current?.querySelectorAll('.upholstery-card')
+        if (cards?.length) {
+          gsap.set(cards, { opacity: 1, x: 0, scale: 1, willChange: 'auto' })
+        }
+      }, 100)
+      return () => clearTimeout(timeoutId)
     }
-
-    // Получаем ID всех вариантов с выбранными цветами
-    const selectedColorIds = new Set(
-      variants
-        .filter(v => v.color && selectedColors.includes(v.color))
-        .map(v => v.id)
-    )
-
-    // Показываем/скрываем карточки в зависимости от фильтра
-    allCards.forEach((card) => {
-      const cardId = card.getAttribute('data-variant-id')
-      if (!cardId) return
-
-      if (selectedColorIds.has(cardId)) {
-        // Показываем карточку
-        card.style.pointerEvents = 'auto'
-        gsap.to(card, {
-          opacity: 1,
-          x: 0,
-          scale: 1,
-          duration: 0.3,
-          ease: 'power2.out'
-        })
-      } else {
-        // Скрываем карточку
-        card.style.pointerEvents = 'none'
-        gsap.to(card, {
-          opacity: 0,
-          x: 20,
-          scale: 0.95,
-          duration: 0.3,
-          ease: 'power2.out'
-        })
-      }
-    })
-
-    // Перемещаем выбранные карточки в начало через CSS order
-    // Это будет обработано через стили в JSX
-  }, [selectedColors, variants, loading])
+  }, [displayKey, loading, prefersReducedMotion])
 
   // Функция для получения цвета (с поддержкой кастомных цветов)
   const getColorHex = (colorName) => {
@@ -336,7 +312,7 @@ const Upholstery = () => {
             <div className="all-upholstery-content">
               <div className="all-upholstery-header inline-flex flex-col justify-start items-center" style={{ gap: '40px' }}>
                 <div ref={allUpholsteryTitleWrapperRef} className="all-upholstery-title-wrapper">
-                  <h1 className="hero-text" style={{ textTransform: 'uppercase' }}>Варианты обивки кресел</h1>
+                  <h1 className="hero-text" style={{ textTransform: 'uppercase' }}>Варианты отделки кресел</h1>
                   <span className="all-upholstery-count">{visibleVariantsCount}</span>
                 </div>
 
@@ -391,14 +367,14 @@ const Upholstery = () => {
 
               {!loading && !error && variants.length === 0 && (
                 <div className="text-center py-20">
-                  <p className="text-second-text text-lg">Варианты обивки не найдены</p>
+                  <p className="text-second-text text-lg">Варианты отделки не найдены</p>
                 </div>
               )}
 
-              {!loading && !error && selectedColors.length > 0 && filteredVariants.filter(v => selectedColors.includes(v.color)).length === 0 && variants.length > 0 && (
+              {!loading && !error && selectedColors.length > 0 && filteredVariants.length === 0 && variants.length > 0 && (
                 <div className="text-center py-20">
                   <p className="text-second-text text-lg">
-                    Варианты обивки выбранных цветов не найдены
+                    Варианты отделки выбранных цветов не найдены
                   </p>
                   <button
                     onClick={() => setSelectedColors([])}
@@ -410,49 +386,83 @@ const Upholstery = () => {
               )}
 
               {!loading && !error && variants.length > 0 && (
-                <div ref={upholsteryGridRef} className="upholstery-grid">
-                  {filteredVariants.map((variant, index) => {
-                    const collection = variant.upholstery_collections
-                    const collectionName = collection?.name || 'Без коллекции'
-                    const isSelected = variant.color && selectedColors.includes(variant.color)
-                    
-                    // Определяем порядок: выбранные идут первыми
-                    const order = isSelected 
-                      ? selectedColors.indexOf(variant.color) 
-                      : selectedColors.length + index
-                    
-                    return (
-                      <div
-                        key={variant.id}
-                        data-variant-id={variant.id}
-                        className="upholstery-card flex flex-col gap-4"
-                        style={{
-                          order: order // Выбранные карточки будут в начале
-                        }}
-                      >
-                        <p className="product-type">
-                          <span style={{ color: '#000000' }}>[ </span>
-                          {collectionName}
-                          <span style={{ color: '#000000' }}> ]</span>
-                        </p>
-                        {variant.image_url ? (
-                          <img
-                            src={variant.image_url}
-                            alt={variant.name}
-                            className="upholstery-cover-image"
-                            onError={(e) => {
-                              e.target.style.display = 'none'
-                            }}
-                          />
-                        ) : (
-                          <div className="upholstery-cover-image bg-second-bg flex items-center justify-center">
-                            <span className="text-second-text text-sm">Нет изображения</span>
-                          </div>
-                        )}
-                        <h3 className="upholstery-title">{variant.name}</h3>
+                <div ref={upholsteryGridRef}>
+                  {selectedColors.length === 0 && collectionGroups ? (
+                    collectionGroups.map((group) => (
+                      <div key={group.key} style={{ marginBottom: 96 }}>
+                        <h2
+                          style={{
+                            fontFamily: "'Commissioner', sans-serif",
+                            fontSize: '14px',
+                            fontWeight: 450,
+                            margin: 0,
+                            marginBottom: 32,
+                            textTransform: 'uppercase',
+                            lineHeight: 1.4
+                          }}
+                        >
+                          <span className="text-second-text">Коллекция</span>
+                          <span style={{ color: '#363636', marginLeft: 6 }}>[ {group.name} ]</span>
+                        </h2>
+                        <div className="upholstery-grid">
+                          {group.variants.map((variant) => (
+                            <div
+                              key={variant.id}
+                              data-variant-id={variant.id}
+                              className="upholstery-card flex flex-col gap-4"
+                            >
+                              {variant.image_url ? (
+                                <img
+                                  src={variant.image_url}
+                                  alt={variant.name}
+                                  className="upholstery-cover-image"
+                                  onError={(e) => {
+                                    e.target.style.display = 'none'
+                                  }}
+                                />
+                              ) : (
+                                <div className="upholstery-cover-image bg-second-bg flex items-center justify-center">
+                                  <span className="text-second-text text-sm">Нет изображения</span>
+                                </div>
+                              )}
+                              <h3 className="upholstery-title">{variant.name}</h3>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    )
-                  })}
+                    ))
+                  ) : (
+                    <div className="upholstery-grid">
+                      {filteredVariants.map((variant) => (
+                        <div
+                          key={variant.id}
+                          data-variant-id={variant.id}
+                          className="upholstery-card flex flex-col gap-4"
+                        >
+                          <p className="product-type">
+                            <span style={{ color: '#000000' }}>[ </span>
+                            {variant.upholstery_collections?.name || 'Без коллекции'}
+                            <span style={{ color: '#000000' }}> ]</span>
+                          </p>
+                          {variant.image_url ? (
+                            <img
+                              src={variant.image_url}
+                              alt={variant.name}
+                              className="upholstery-cover-image"
+                              onError={(e) => {
+                                e.target.style.display = 'none'
+                              }}
+                            />
+                          ) : (
+                            <div className="upholstery-cover-image bg-second-bg flex items-center justify-center">
+                              <span className="text-second-text text-sm">Нет изображения</span>
+                            </div>
+                          )}
+                          <h3 className="upholstery-title">{variant.name}</h3>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

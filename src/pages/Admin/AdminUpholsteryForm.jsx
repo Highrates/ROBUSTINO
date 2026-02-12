@@ -63,7 +63,7 @@ const AdminUpholsteryForm = () => {
       const standardColors = [
         'Белый', 'Черный', 'Серый', 'Бежевый', 'Коричневый', 'Красный', 'Синий',
         'Зеленый', 'Желтый', 'Оранжевый', 'Фиолетовый', 'Розовый', 'Голубой',
-        'Темно-синий', 'Темно-коричневый', 'Светло-серый', 'Темно-серый', 'Кремовый'
+        'Темно-синий', 'Темно-коричневый', 'Светло-серый', 'Темно-серый', 'Кремовый', 'Бордовый'
       ]
       const isCustomColor = color && !standardColors.includes(color)
       
@@ -238,6 +238,7 @@ const AdminUpholsteryForm = () => {
                 <option value="Светло-серый">Светло-серый</option>
                 <option value="Темно-серый">Темно-серый</option>
                 <option value="Кремовый">Кремовый</option>
+                <option value="Бордовый">Бордовый</option>
                 <option value="custom">Другое (указать вручную)</option>
               </select>
               {formData.isCustomColor && (

@@ -19,7 +19,7 @@ const Navbar = () => {
   // Полный список ссылок для полноэкранного меню
   const fullscreenMenuItems = [
     { label: 'Все кресла', path: '/products' },
-    { label: 'Варианты обивки кресел', path: '/upholstery' },
+    { label: 'Варианты отделки кресел', path: '/upholstery' },
     { label: 'О нас', path: '/about' },
     { label: 'Реализованные объекты', path: '/projects' },
     { label: 'Статьи и новости', path: '/articles' },
