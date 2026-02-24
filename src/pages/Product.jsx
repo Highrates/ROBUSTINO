@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import gsap from 'gsap'
@@ -49,7 +49,12 @@ const Product = () => {
   const productDetailsSectionRef = useRef(null)
   const pdcLeftRef = useRef(null)
   const pdcRightRef = useRef(null)
-  
+
+  // Refs для синхронизации высот левого и правого product-content-mid
+  const productContentMidLeftRef = useRef(null)
+  const productContentMidRightRef = useRef(null)
+  const [contentMidHeight, setContentMidHeight] = useState(224)
+
   // Refs для хранения анимаций и триггеров для правильной очистки
   const animationsRef = useRef([])
   const scrollTriggersRef = useRef([])
@@ -118,7 +123,7 @@ const Product = () => {
     if (!slug) return
 
     // Сначала проверяем, есть ли продукт в уже загруженном списке по slug
-    const productFromList = products.find(p => p.slug === slug && p.status === 'published')
+    const productFromList = products.find(p => p.slug === slug && p.status === 'published' && !p.show_only_on_main_model)
     
     // Загружаем продукт только если его нет в списке или если это другой продукт
     if (!productFromList || currentProduct?.slug !== slug) {
@@ -474,7 +479,7 @@ const Product = () => {
     if (!products || products.length === 0) return []
     
     return products
-      .filter(product => product && product.status === 'published')
+      .filter(product => product && product.status === 'published' && !product.show_only_on_main_model)
       .sort((a, b) => {
         if (a.display_order !== null && b.display_order !== null) {
           return a.display_order - b.display_order
@@ -517,6 +522,31 @@ const Product = () => {
     if (!currentProduct?.parent_product_id || !products?.length) return null
     return products.find(p => p?.id === currentProduct.parent_product_id && p?.status === 'published') || null
   }, [currentProduct?.parent_product_id, products])
+
+  // Список для блока «Конфигурации модели»: на странице основной модели — её конфигурации; на странице конфигурации — основная модель и все её конфигурации
+  const configProductsForBlock = useMemo(() => {
+    if (!products?.length) return []
+    if (parentProduct) {
+      const siblings = products
+        .filter(p => p?.parent_product_id === parentProduct.id && p?.status === 'published')
+        .sort((a, b) => {
+          if (a.display_order != null && b.display_order != null) return a.display_order - b.display_order
+          if (a.display_order != null) return -1
+          if (b.display_order != null) return 1
+          return 0
+        })
+      return [parentProduct, ...siblings]
+    }
+    return modelConfigurations
+  }, [parentProduct, modelConfigurations, products])
+
+  // Синхронизация высот левого и правого блоков product-content-mid (по максимальной высоте контента)
+  useLayoutEffect(() => {
+    const leftH = productContentMidLeftRef.current?.scrollHeight ?? 0
+    const rightH = productContentMidRightRef.current?.scrollHeight ?? 0
+    const maxH = Math.max(224, leftH, rightH)
+    setContentMidHeight(maxH)
+  }, [currentProduct, configProductsForBlock])
 
   // productProjects загружаются через getProductProjects (таблица product_projects)
 
@@ -769,14 +799,73 @@ const Product = () => {
               )}
             </div>
 
+            {/* Product Content Mid - Absolute Overlay Left: конфигурации / основная модель (первое изображение, клик → страница товара) */}
+            {configProductsForBlock.length > 0 && (
+              <div
+                ref={productContentMidLeftRef}
+                className="product-content-mid absolute inline-flex flex-col justify-start items-start gap-4"
+                style={{
+                  left: 'clamp(1rem, 3vw, 2.5rem)',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  zIndex: 10,
+                  minHeight: 224,
+                  height: contentMidHeight
+                }}
+              >
+                <p className="text-[14px] text-second-text uppercase" style={{ fontWeight: 450 }}>
+                  Конфигурации модели
+                </p>
+                <div className="grid grid-cols-2 gap-2 w-[208px]">
+                  {configProductsForBlock.map((product) => {
+                    const firstImage = product?.images?.[0]
+                    const href = `/product/${product.slug || product.id}`
+                    return (
+                      <Link
+                        key={product.id}
+                        to={href}
+                        className="block w-[100px] h-[100px] rounded overflow-hidden focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-second-text hover:outline hover:outline-[0.5px] hover:outline-black/[0.16]"
+                        style={{ borderRadius: '4px' }}
+                        aria-label={`Перейти к товару: ${product.name}`}
+                      >
+                        {firstImage ? (
+                          <img
+                            src={firstImage}
+                            alt=""
+                            width={100}
+                            height={100}
+                            className="w-[100px] h-[100px] object-cover"
+                            style={{ borderRadius: '4px', objectFit: 'cover' }}
+                            onError={(e) => {
+                              e.target.style.display = 'none'
+                            }}
+                          />
+                        ) : (
+                          <div
+                            className="w-[100px] h-[100px] bg-gray-200 flex items-center justify-center text-second-text text-xs"
+                            style={{ borderRadius: '4px' }}
+                          >
+                            Нет фото
+                          </div>
+                        )}
+                      </Link>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* Product Content Mid - Absolute Overlay Right */}
             <div 
+              ref={productContentMidRightRef}
               className="product-content-mid absolute inline-flex flex-col justify-start items-start gap-4"
               style={{
                 right: 'clamp(1rem, 3vw, 2.5rem)',
                 top: '50%',
                 transform: 'translateY(-50%)',
-                zIndex: 10
+                zIndex: 10,
+                minHeight: 224,
+                height: contentMidHeight
               }}
             >
                   {/* Product Info 1 */}
@@ -818,43 +907,6 @@ const Product = () => {
                       {currentProduct?.in_stock || 'не указано'}
                     </p>
                   </div>
-
-                  {/* Конфигурации модели — только если есть конфигурации */}
-                  {modelConfigurations.length > 0 && (
-                    <div ref={el => productInfoRefs.current[4] = el} className="product-info self-stretch inline-flex flex-col justify-start items-start gap-0.5">
-                      <p className="text-[14px] text-second-text uppercase" style={{ fontWeight: 450 }}>
-                        Конфигурации модели
-                      </p>
-                      <div className="flex flex-col gap-0.5">
-                        {modelConfigurations.map((config) => (
-                          <Link
-                            key={config.id}
-                            to={`/product/${config.slug || config.id}`}
-                            className="text-[14px] text-main-text uppercase hover:text-second-text transition-colors"
-                            style={{ fontWeight: 450 }}
-                          >
-                            {config.name}
-                          </Link>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Основная модель — только если текущий продукт является конфигурацией */}
-                  {parentProduct && (
-                    <div ref={el => productInfoRefs.current[5] = el} className="product-info self-stretch inline-flex flex-col justify-start items-start gap-0.5">
-                      <p className="text-[14px] text-second-text uppercase" style={{ fontWeight: 450 }}>
-                        Основная модель
-                      </p>
-                      <Link
-                        to={`/product/${parentProduct.slug || parentProduct.id}`}
-                        className="text-[14px] text-main-text uppercase hover:text-second-text transition-colors"
-                        style={{ fontWeight: 450 }}
-                      >
-                        {parentProduct.name}
-                      </Link>
-                    </div>
-                  )}
             </div>
 
             {/* Product Content Bottom - Absolute Overlay */}

@@ -214,7 +214,7 @@ const Home = () => {
   }, [])
   
   // Фильтруем только опубликованные продукты
-  const publishedProducts = products.filter(product => product.status === 'published')
+  const publishedProducts = products.filter(product => product.status === 'published' && !product.show_only_on_main_model)
 
   // Отслеживание скролла для фиксации иконки
   useEffect(() => {

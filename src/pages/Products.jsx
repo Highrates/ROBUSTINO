@@ -44,7 +44,7 @@ const Products = () => {
 
   // Мемоизируем отфильтрованные продукты
   const publishedProducts = useMemo(
-    () => products.filter(product => product.status === 'published'),
+    () => products.filter(product => product.status === 'published' && !product.show_only_on_main_model),
     [products]
   )
 

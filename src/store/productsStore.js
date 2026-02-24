@@ -67,33 +67,28 @@ const useProductsStore = create((set, get) => ({
     }
   },
 
-  // Fetch single product by ID
-  fetchProduct: async (id) => {
+  // Fetch single product by ID (options.forAdmin: true — для админки, разрешает черновики)
+  fetchProduct: async (id, options = {}) => {
     const state = get()
     
-    // Очищаем предыдущий продукт перед загрузкой нового
     set({ currentProduct: null })
     
-    // Отменяем предыдущий запрос, если он еще выполняется
     if (state.fetchAbortFlag) {
       state.fetchAbortFlag.cancelled = true
     }
 
-    // Создаем новый флаг отмены
     const abortFlag = { cancelled: false }
     set({ loading: true, error: null, fetchAbortFlag: abortFlag })
 
     try {
-      const product = await getProduct(id)
+      const product = await getProduct(id, options)
       
-      // Проверяем, не был ли запрос отменен
       if (abortFlag.cancelled) {
         return
       }
 
       set({ currentProduct: product, loading: false, fetchAbortFlag: null })
     } catch (error) {
-      // Игнорируем ошибки отмененных запросов
       if (abortFlag.cancelled) {
         return
       }
@@ -105,6 +100,8 @@ const useProductsStore = create((set, get) => ({
       })
     }
   },
+
+  clearError: () => set({ error: null }),
 
   // Fetch single product by slug
   fetchProductBySlug: async (slug) => {

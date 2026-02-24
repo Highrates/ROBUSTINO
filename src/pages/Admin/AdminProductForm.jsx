@@ -83,11 +83,13 @@ const AdminProductForm = () => {
     weight_kg: '',
     in_stock: '',
     model_url: null,
+    document_url: null, // Презентация кресла PDF
     images: [],
     status: 'draft',
     private_token: null, // Приватный токен для доступа по ссылке
     parent_product_id: null, // ID основной модели (для конфигураций)
     configurations: [], // Массив ID товаров-конфигураций
+    show_only_on_main_model: false, // Только на странице основной модели (не в общем каталоге)
   })
   // Сохраняем токен при смене статуса, чтобы можно было восстановить
   const [savedPrivateToken, setSavedPrivateToken] = useState(null)
@@ -191,12 +193,12 @@ const AdminProductForm = () => {
     }
   }, [projectsDropdownOpen, configurationsDropdownOpen])
 
-  // Загружаем товар для редактирования
+  // Загружаем товар для редактирования (в т.ч. черновики — forAdmin: true)
   useEffect(() => {
     let cancelled = false
     
     if (isEdit && id) {
-      fetchProduct(id).then(() => {
+      fetchProduct(id, { forAdmin: true }).then(() => {
         // Store сам обрабатывает отмену через fetchAbortFlag
       }).catch((error) => {
         if (!cancelled) {
@@ -205,7 +207,6 @@ const AdminProductForm = () => {
       })
     }
     
-    // Cleanup: отменяем обновление состояния при размонтировании
     return () => {
       cancelled = true
     }
@@ -225,11 +226,13 @@ const AdminProductForm = () => {
         weight_kg: currentProduct.weight_kg || '',
         in_stock: currentProduct.in_stock || '',
         model_url: currentProduct.model_url || null,
+        document_url: currentProduct.document_url || null,
         images: currentProduct.images || [],
         status: currentProduct.status || 'draft',
         private_token: currentProduct.private_token || null,
         parent_product_id: currentProduct.parent_product_id || null,
         configurations: [], // Загрузим отдельно
+        show_only_on_main_model: currentProduct.show_only_on_main_model ?? false,
       })
 
       // Загружаем конфигурации (товары, у которых parent_product_id = текущий товар)
@@ -329,10 +332,12 @@ const AdminProductForm = () => {
         weight_kg: formData.weight_kg ? parseFloat(formData.weight_kg) : null,
         in_stock: formData.in_stock || null,
         model_url: formData.model_url || null,
+        document_url: formData.document_url || null,
         parent_product_id: formData.parent_product_id || null,
         images: formData.images || [],
         status: formData.status,
         private_token: finalToken,
+        show_only_on_main_model: formData.show_only_on_main_model ?? false,
       }
 
       // Генерируем slug только при создании нового товара
@@ -596,6 +601,19 @@ const AdminProductForm = () => {
               value={formData.model_url}
               onChange={(url) => setFormData({ ...formData, model_url: url })}
               label="3D модель"
+            />
+          </div>
+
+          {/* Презентация кресла PDF */}
+          <div>
+            <FileUpload
+              bucket="documents"
+              pathPrefix="products/presentations"
+              accept=".pdf"
+              maxSize={20 * 1024 * 1024}
+              value={formData.document_url}
+              onChange={(url) => setFormData({ ...formData, document_url: url })}
+              label="Презентация кресла PDF"
             />
           </div>
 
@@ -974,6 +992,34 @@ const AdminProductForm = () => {
                 <span>Доступно только по ссылке</span>
               </label>
             </div>
+
+            {/* Переключатель: только на странице основной модели (имеет смысл при статусе «Опубликовано») */}
+            <div className="mt-4 flex items-center gap-3">
+              <button
+                type="button"
+                role="switch"
+                aria-checked={formData.show_only_on_main_model}
+                onClick={() => setFormData({ ...formData, show_only_on_main_model: !formData.show_only_on_main_model })}
+                className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                  formData.show_only_on_main_model ? 'bg-blue-600' : 'bg-gray-200'
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition ${
+                    formData.show_only_on_main_model ? 'translate-x-5' : 'translate-x-0.5'
+                  }`}
+                  aria-hidden="true"
+                />
+              </button>
+              <label className="text-sm text-gray-700 cursor-pointer" onClick={() => setFormData({ ...formData, show_only_on_main_model: !formData.show_only_on_main_model })}>
+                Товар отображается только на странице основной модели
+              </label>
+            </div>
+            <p className="mt-1 text-xs text-gray-500">
+              {formData.show_only_on_main_model
+                ? 'Включено: товар не показывается в общем каталоге, только в блоке конфигураций на странице основной модели.'
+                : 'Выключено: при статусе «Опубликовано» товар отображается в каталоге как обычно.'}
+            </p>
             
             {/* Поле для приватной ссылки */}
             {formData.status === 'link_only' && (

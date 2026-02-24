@@ -4,15 +4,17 @@ import AdminLayout from '@components/admin/AdminLayout'
 import useProductsStore from '@store/productsStore'
 
 const AdminProducts = () => {
-  const { products, loading, error, fetchProducts, removeProduct, setProductsOptimistic, rollbackProducts, updateProductsOrder } = useProductsStore()
+  const { products, loading, error, fetchProducts, clearError, removeProduct, setProductsOptimistic, rollbackProducts, updateProductsOrder } = useProductsStore()
   const [deletingId, setDeletingId] = useState(null)
   const [draggedId, setDraggedId] = useState(null)
   const [dragOverId, setDragOverId] = useState(null)
   const [isReordering, setIsReordering] = useState(false)
 
+  // Сбрасываем ошибку store при входе на список (чтобы не показывать старую ошибку «не опубликован»)
   useEffect(() => {
+    clearError()
     fetchProducts()
-  }, [fetchProducts])
+  }, [fetchProducts, clearError])
 
   const handleDelete = async (id, name) => {
     if (!window.confirm(`Вы уверены, что хотите удалить товар "${name}"?`)) {

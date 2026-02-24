@@ -27,7 +27,9 @@ if (supabaseUrl && supabaseAnonKey) {
 }
 
 if (import.meta.env.DEV && supabase) {
-  console.info('[Supabase] Подключение:', supabaseUrl.replace(/\/$/, ''), '— одна БД с продом')
+  const url = supabaseUrl.replace(/\/$/, '')
+  const isProd = url.includes('robustino.ru')
+  console.info('[Supabase] URL:', url, isProd ? '— продовая БД' : '— не прод, проверьте .env')
 }
 
 export { supabase }

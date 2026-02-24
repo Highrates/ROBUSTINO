@@ -1,8 +1,9 @@
 import * as THREE from 'three'
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Suspense, useState, useRef, useEffect, useMemo } from 'react'
 import { Environment } from '@react-three/drei'
-import ChairModel from './ChairModel'
+import { PreloadedChairModel, setupShadows } from './ChairModel'
 import ErrorBoundary from './ErrorBoundary'
 
 // Компонент для управления камерой
@@ -32,8 +33,8 @@ function CameraController({ zoomLevel, cameraPosition = [0, 0.65, 2] }) {
   return null
 }
 
-// Компонент для кресла с инерцией
-function ChairWrapper({ modelPath, autoRotate, onLoad, onAutoRotateEnd, chairRef, scale = 1, initialRotation = 0 }) {
+// Компонент для кресла с инерцией. scene — предзагруженная сцена (для отображения прогресса).
+function ChairWrapper({ modelPath, scene: loadedScene, autoRotate, onLoad, onAutoRotateEnd, chairRef, scale = 1, initialRotation = 0 }) {
   const groupRef = useRef()
   const isModelLoadedRef = useRef(false)
   const autoRotateStartTimeRef = useRef(null)
@@ -151,9 +152,11 @@ function ChairWrapper({ modelPath, autoRotate, onLoad, onAutoRotateEnd, chairRef
     groupRef.current.rotation.y = chairRef.current.rotationY.current
   })
 
+  if (!loadedScene) return <group ref={groupRef} />
+
   return (
     <group ref={groupRef}>
-      <ChairModel modelPath={modelPath} onLoad={handleModelLoad} scale={scale} />
+      <PreloadedChairModel scene={loadedScene} onLoad={handleModelLoad} scale={scale} />
     </group>
   )
 }
@@ -169,7 +172,41 @@ export default function ModelViewer({
   cameraPosition = [0, 0.65, 2] // Позиция камеры [x, y, z]
 }) {
   const [isLoading, setIsLoading] = useState(true)
-  
+  const [loadProgress, setLoadProgress] = useState(0)
+  const [loadedScene, setLoadedScene] = useState(null)
+  const loadAbortRef = useRef(null) // при смене modelPath игнорируем результат предыдущей загрузки
+
+  // Загрузка модели через GLTFLoader для отображения прогресса в %
+  useEffect(() => {
+    setLoadedScene(null)
+    setLoadProgress(0)
+    setIsLoading(true)
+    const currentPath = modelPath
+    loadAbortRef.current = currentPath
+
+    const loader = new GLTFLoader()
+    loader.load(
+      modelPath,
+      (gltf) => {
+        if (loadAbortRef.current !== currentPath) return
+        setupShadows(gltf.scene)
+        setLoadedScene(gltf.scene)
+        setLoadProgress(100)
+        setIsLoading(false)
+      },
+      (xhr) => {
+        if (loadAbortRef.current !== currentPath) return
+        if (xhr.lengthComputable && xhr.total > 0) {
+          setLoadProgress(Math.round((xhr.loaded / xhr.total) * 100))
+        }
+      },
+      () => {
+        if (loadAbortRef.current !== currentPath) return
+        setIsLoading(false)
+      }
+    )
+  }, [modelPath])
+
   // Создаем текстуру с градиентом для пола
   const gradientTexture = useMemo(() => {
     const canvas = document.createElement('canvas')
@@ -286,9 +323,20 @@ export default function ModelViewer({
       onMouseLeave={handleMouseUp} // чтобы не залипало если увели курсор
     >
       {isLoading && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 z-10">
-          <div className="w-8 h-8 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin" aria-hidden="true"></div>
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 z-10 bg-[#F1F2F0]/80">
+          <div className="w-8 h-8 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin" aria-hidden="true" />
           <span className="text-main-text text-sm">Идет загрузка 3D модели</span>
+          <div className="w-40 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-blue-500 transition-[width] duration-150"
+              style={{ width: `${loadProgress}%` }}
+              role="progressbar"
+              aria-valuenow={loadProgress}
+              aria-valuemin={0}
+              aria-valuemax={100}
+            />
+          </div>
+          <span className="text-main-text text-xs text-gray-500">{loadProgress}%</span>
         </div>
       )}
       
@@ -356,6 +404,7 @@ export default function ModelViewer({
           {/* модель с фиксированной позицией */}
           <ChairWrapper
             modelPath={modelPath}
+            scene={loadedScene}
             autoRotate={autoRotate}
             onLoad={() => setIsLoading(false)}
             onAutoRotateEnd={onAutoRotateEnd}

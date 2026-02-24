@@ -89,7 +89,7 @@ export const getProducts = async () => {
     async () => {
       const { data, error } = await supabase
         .from('products')
-        .select('id, name, type, status, created_at, display_order, images, slug, parent_product_id')
+        .select('id, name, type, status, created_at, display_order, images, slug, parent_product_id, show_only_on_main_model, document_url')
         .order('display_order', { ascending: true })
         .order('created_at', { ascending: false })
         .limit(1000)
@@ -103,9 +103,11 @@ export const getProducts = async () => {
 /**
  * Get single product by ID
  * @param {string} id - Product ID
+ * @param {{ forAdmin?: boolean }} options - forAdmin: true — разрешить загрузку черновика (для админки)
  * @returns {Promise<Object>} Product object
  */
-export const getProduct = async (id) => {
+export const getProduct = async (id, options = {}) => {
+  const { forAdmin = false } = options
   if (!supabase) {
     throw new Error('Supabase не настроен')
   }
@@ -119,12 +121,9 @@ export const getProduct = async (id) => {
         .single()
       
       if (error) {
-        // Более информативное сообщение об ошибке
         if (error.code === 'PGRST116') {
           throw new Error(`Продукт с ID ${id} не найден. Возможно, он не опубликован или был удален.`)
         }
-        
-        // Другие ошибки
         throw new Error(error.message || `Ошибка загрузки продукта: ${error.code || 'неизвестная ошибка'}`)
       }
       
@@ -132,8 +131,7 @@ export const getProduct = async (id) => {
         throw new Error(`Продукт с ID ${id} не найден`)
       }
       
-      // Проверяем статус (на всякий случай, хотя RLS должен это делать)
-      if (data.status !== 'published') {
+      if (!forAdmin && data.status !== 'published') {
         throw new Error(`Продукт с ID ${id} не опубликован (статус: ${data.status})`)
       }
       
@@ -146,9 +144,11 @@ export const getProduct = async (id) => {
 /**
  * Get product by slug
  * @param {string} slug - Product slug
+ * @param {{ forAdmin?: boolean }} options - forAdmin: true — разрешить загрузку черновика (для админки)
  * @returns {Promise<Object>} Product object
  */
-export const getProductBySlug = async (slug) => {
+export const getProductBySlug = async (slug, options = {}) => {
+  const { forAdmin = false } = options
   if (!supabase) {
     throw new Error('Supabase не настроен')
   }
@@ -172,7 +172,7 @@ export const getProductBySlug = async (slug) => {
         throw new Error(`Продукт со slug "${slug}" не найден`)
       }
       
-      if (data.status !== 'published') {
+      if (!forAdmin && data.status !== 'published') {
         throw new Error(`Продукт со slug "${slug}" не опубликован (статус: ${data.status})`)
       }
       
