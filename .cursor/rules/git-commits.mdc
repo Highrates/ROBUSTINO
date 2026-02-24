@@ -1,0 +1,15 @@
+---
+description: При коммитах в этом репозитории всегда указывать автора, чтобы в истории не появлялся cursoragent.
+globs: 
+alwaysApply: true
+---
+
+# Git-коммиты
+
+При выполнении `git commit` в этом проекте **всегда** указывай явного автора:
+
+```bash
+git commit --author="Aleksey Popov <ap7.atb@gmail.com>" -m "сообщение"
+```
+
+Так в истории на GitHub будет отображаться владелец репозитория, а не cursoragent.
