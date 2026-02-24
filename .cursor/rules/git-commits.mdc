@@ -13,3 +13,5 @@ git commit --author="Aleksey Popov <ap7.atb@gmail.com>" -m "сообщение"
 ```
 
 Так в истории на GitHub будет отображаться владелец репозитория, а не cursoragent.
+
+**Не добавлять** в сообщение коммита строку `Co-authored-by: Cursor <cursoragent@cursor.com>` (и любые Co-authored-by).
