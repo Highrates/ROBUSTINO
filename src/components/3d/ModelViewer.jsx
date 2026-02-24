@@ -286,8 +286,9 @@ export default function ModelViewer({
       onMouseLeave={handleMouseUp} // чтобы не залипало если увели курсор
     >
       {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center z-10">
-          <div className="w-8 h-8 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 z-10">
+          <div className="w-8 h-8 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin" aria-hidden="true"></div>
+          <span className="text-main-text text-sm">Идет загрузка 3D модели</span>
         </div>
       )}
       

@@ -55,9 +55,9 @@ const ContactsSection = () => {
                   {/* Первый блок адреса */}
                   <div className="address-block flex flex-col gap-[8px]">
                     <p className="product-type" style={{ margin: 0 }}>адрес:</p>
-                    <p style={{ fontFamily: 'Commissioner', fontSize: '15px', fontWeight: 400, color: '#363636', margin: 0, lineHeight: '1.6' }}>
-                      Шоурум<br />
-                      Бизнес-центр "Обнинский", Киевское шоссе д. 11-б, офис 204, г. Обнинск, Россия
+                    <p style={{ fontFamily: 'Commissioner', fontSize: '14px', fontWeight: 450, textTransform: 'uppercase', color: 'rgb(54, 54, 54)', margin: 0 }}>
+                      Центральный Шоурум продукции Фабрики Робустино,<br />
+                      г. Обнинск Киевское шоссе 11Б, Россия
                     </p>
                   </div>
 

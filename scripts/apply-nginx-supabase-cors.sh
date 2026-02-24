@@ -1,0 +1,103 @@
+#!/usr/bin/env bash
+# Применяет CORS и client_max_body_size для Supabase в /etc/nginx/sites-available/default.
+# Запускать на сервере с sudo: sudo bash apply-nginx-supabase-cors.sh
+
+set -e
+NGINX_DEFAULT="/etc/nginx/sites-available/default"
+BACKUP="${NGINX_DEFAULT}.bak.$(date +%Y%m%d%H%M%S)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+if [[ ! -f "$NGINX_DEFAULT" ]]; then
+  echo "Файл $NGINX_DEFAULT не найден."
+  exit 1
+fi
+
+cp "$NGINX_DEFAULT" "$BACKUP"
+echo "Резервная копия: $BACKUP"
+
+python3 << 'PYTHON'
+path = "/etc/nginx/sites-available/default"
+with open(path, "r", encoding="utf-8", errors="replace") as f:
+    content = f.read()
+
+# Блок map для CORS (один раз в начале)
+map_block = """map $http_origin $cors_origin {
+    default "";
+    "https://robustino.ru" $http_origin;
+    "http://localhost:3000" $http_origin;
+}
+
+"""
+
+# Старый блок location /supabase-api/ (без CORS и без client_max_body_size)
+old_location = """        location /supabase-api/ {
+                rewrite ^/supabase-api/(.*) /$1 break;
+                proxy_pass http://127.0.0.1:8000;
+                proxy_http_version 1.1;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+                proxy_buffering off;
+                proxy_read_timeout 86400;
+        }"""
+
+# Новый блок (с CORS и client_max_body_size)
+new_location = """        location /supabase-api/ {
+                client_max_body_size 50M;
+                add_header Access-Control-Allow-Origin $cors_origin always;
+                add_header Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS" always;
+                add_header Access-Control-Allow-Headers "Authorization, Content-Type, apikey, x-client-info" always;
+                add_header Access-Control-Allow-Credentials "true" always;
+
+                if ($request_method = OPTIONS) {
+                        return 204;
+                }
+
+                rewrite ^/supabase-api/(.*) /$1 break;
+                proxy_pass http://127.0.0.1:8000;
+                proxy_http_version 1.1;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+                proxy_buffering off;
+                proxy_read_timeout 86400;
+        }"""
+
+changed = False
+
+# 1) Добавить map перед "# Default server configuration", если ещё нет
+if "map $http_origin $cors_origin" not in content:
+    content = content.replace(
+        "# Default server configuration\n#\nserver {",
+        "# Default server configuration\n#\n" + map_block + "server {",
+        1
+    )
+    changed = True
+    print("Добавлен блок map для CORS.")
+else:
+    print("Блок map уже есть.")
+
+# 2) Заменить оба location /supabase-api/
+if old_location in content:
+    content = content.replace(old_location, new_location)
+    changed = True
+    print("Заменены блоки location /supabase-api/ (CORS + client_max_body_size 50M).")
+else:
+    print("Блок location /supabase-api/ не найден в ожидаемом виде — возможно, правки уже применены или конфиг изменён.")
+
+if changed:
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(content)
+
+PYTHON
+
+echo "Проверка nginx..."
+if nginx -t 2>/dev/null; then
+  systemctl reload nginx
+  echo "Nginx перезагружен. Готово."
+else
+  echo "Ошибка в конфиге nginx. Восстановите: sudo cp $BACKUP $NGINX_DEFAULT"
+  exit 1
+fi

@@ -31,3 +31,6 @@ dist-ssr
 # Supabase
 .supabase
 
+# Локальная инструкция деплоя (не коммитить)
+deploy-instructions.txt
+
