@@ -46,9 +46,13 @@ old_location = """        location /supabase-api/ {
 # Новый блок (с CORS и client_max_body_size)
 new_location = """        location /supabase-api/ {
                 client_max_body_size 50M;
+                proxy_hide_header Access-Control-Allow-Origin;
+                proxy_hide_header Access-Control-Allow-Methods;
+                proxy_hide_header Access-Control-Allow-Headers;
+                proxy_hide_header Access-Control-Allow-Credentials;
                 add_header Access-Control-Allow-Origin $cors_origin always;
                 add_header Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS" always;
-                add_header Access-Control-Allow-Headers "Authorization, Content-Type, apikey, x-client-info" always;
+                add_header Access-Control-Allow-Headers "Authorization, Content-Type, apikey, x-client-info, accept-profile, content-profile" always;
                 add_header Access-Control-Allow-Credentials "true" always;
 
                 if ($request_method = OPTIONS) {
@@ -96,16 +100,43 @@ old_pattern = re.compile(
     r'\1\}',
     re.MULTILINE
 )
-# Если уже есть client_max_body_size — не трогаем
-if "client_max_body_size 50M" in content and "add_header Access-Control-Allow-Origin $cors_origin" in content:
-    print("Блоки location /supabase-api/ уже с CORS и client_max_body_size — пропуск.")
+# Если уже есть CORS, но без accept-profile — дополняем заголовки (для Supabase REST)
+if "add_header Access-Control-Allow-Origin $cors_origin" in content and "accept-profile" not in content and "apikey, x-client-info" in content:
+    content = content.replace(
+        'add_header Access-Control-Allow-Headers "Authorization, Content-Type, apikey, x-client-info" always;',
+        'add_header Access-Control-Allow-Headers "Authorization, Content-Type, apikey, x-client-info, accept-profile, content-profile" always;',
+        2
+    )
+    changed = True
+    print("Добавлены заголовки accept-profile, content-profile в CORS.")
+elif "client_max_body_size 50M" in content and "accept-profile" in content and "proxy_hide_header Access-Control-Allow-Origin" in content:
+    print("Блоки location /supabase-api/ уже с полным CORS — пропуск.")
+elif "add_header Access-Control-Allow-Origin $cors_origin" in content and "proxy_hide_header Access-Control-Allow-Origin" not in content:
+    hide_block = (
+        "proxy_hide_header Access-Control-Allow-Origin;\n                "
+        "proxy_hide_header Access-Control-Allow-Methods;\n                "
+        "proxy_hide_header Access-Control-Allow-Headers;\n                "
+        "proxy_hide_header Access-Control-Allow-Credentials;\n                "
+    )
+    content = re.sub(
+        r'(client_max_body_size 50M;\s+)add_header Access-Control-Allow-Origin',
+        r'\1' + hide_block + 'add_header Access-Control-Allow-Origin',
+        content,
+        count=2
+    )
+    changed = True
+    print("Добавлен proxy_hide_header — в ответе только один CORS origin.")
 elif old_pattern.search(content):
     content = old_pattern.sub(
         r'''        location /supabase-api/ {
                 client_max_body_size 50M;
+                proxy_hide_header Access-Control-Allow-Origin;
+                proxy_hide_header Access-Control-Allow-Methods;
+                proxy_hide_header Access-Control-Allow-Headers;
+                proxy_hide_header Access-Control-Allow-Credentials;
                 add_header Access-Control-Allow-Origin $cors_origin always;
                 add_header Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS" always;
-                add_header Access-Control-Allow-Headers "Authorization, Content-Type, apikey, x-client-info" always;
+                add_header Access-Control-Allow-Headers "Authorization, Content-Type, apikey, x-client-info, accept-profile, content-profile" always;
                 add_header Access-Control-Allow-Credentials "true" always;
 
                 if ($request_method = OPTIONS) {

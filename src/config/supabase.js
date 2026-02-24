@@ -19,6 +19,15 @@ if (supabaseUrl && supabaseAnonKey) {
   console.warn(
     'Supabase not configured. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env file'
   )
+  if (import.meta.env.DEV) {
+    console.warn(
+      'Локально: создайте .env в корне проекта из .env.example и укажите те же VITE_SUPABASE_URL и VITE_SUPABASE_ANON_KEY, что и на проде (одна БД). После правок .env перезапустите dev-сервер.'
+    )
+  }
+}
+
+if (import.meta.env.DEV && supabase) {
+  console.info('[Supabase] Подключение:', supabaseUrl.replace(/\/$/, ''), '— одна БД с продом')
 }
 
 export { supabase }
