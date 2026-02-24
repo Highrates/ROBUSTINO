@@ -16,6 +16,7 @@ cp "$NGINX_DEFAULT" "$BACKUP"
 echo "Резервная копия: $BACKUP"
 
 python3 << 'PYTHON'
+import re
 path = "/etc/nginx/sites-available/default"
 with open(path, "r", encoding="utf-8", errors="replace") as f:
     content = f.read()
@@ -79,9 +80,50 @@ if "map $http_origin $cors_origin" not in content:
 else:
     print("Блок map уже есть.")
 
-# 2) Заменить оба location /supabase-api/
-if old_location in content:
-    content = content.replace(old_location, new_location)
+# 2) Заменить оба location /supabase-api/ (регулярка — любое форматирование)
+# Блок без client_max_body_size и без add_header Access-Control (пробелы/табы любые)
+old_pattern = re.compile(
+    r'(\s+)location\s+/supabase-api/\s+\{\s+'
+    r'rewrite\s+\^/supabase-api/\(\.\*\)\s+/\$1\s+break;\s+'
+    r'proxy_pass\s+http://127\.0\.0\.1:8000;\s+'
+    r'proxy_http_version\s+1\.1;\s+'
+    r'proxy_set_header\s+Host\s+\$host;\s+'
+    r'proxy_set_header\s+X-Real-IP\s+\$remote_addr;\s+'
+    r'proxy_set_header\s+X-Forwarded-For\s+\$proxy_add_x_forwarded_for;\s+'
+    r'proxy_set_header\s+X-Forwarded-Proto\s+\$scheme;\s+'
+    r'proxy_buffering\s+off;\s+'
+    r'proxy_read_timeout\s+86400;\s+'
+    r'\1\}',
+    re.MULTILINE
+)
+# Если уже есть client_max_body_size — не трогаем
+if "client_max_body_size 50M" in content and "add_header Access-Control-Allow-Origin $cors_origin" in content:
+    print("Блоки location /supabase-api/ уже с CORS и client_max_body_size — пропуск.")
+elif old_pattern.search(content):
+    content = old_pattern.sub(
+        r'''        location /supabase-api/ {
+                client_max_body_size 50M;
+                add_header Access-Control-Allow-Origin $cors_origin always;
+                add_header Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS" always;
+                add_header Access-Control-Allow-Headers "Authorization, Content-Type, apikey, x-client-info" always;
+                add_header Access-Control-Allow-Credentials "true" always;
+
+                if ($request_method = OPTIONS) {
+                        return 204;
+                }
+
+                rewrite ^/supabase-api/(.*) /$1 break;
+                proxy_pass http://127.0.0.1:8000;
+                proxy_http_version 1.1;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+                proxy_buffering off;
+                proxy_read_timeout 86400;
+        }''',
+        content
+    )
     changed = True
     print("Заменены блоки location /supabase-api/ (CORS + client_max_body_size 50M).")
 else:
