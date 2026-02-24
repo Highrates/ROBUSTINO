@@ -26,6 +26,7 @@ map_block = """map $http_origin $cors_origin {
     default "";
     "https://robustino.ru" $http_origin;
     "http://localhost:3000" $http_origin;
+    "http://localhost:3001" $http_origin;
 }
 
 """
@@ -71,6 +72,17 @@ new_location = """        location /supabase-api/ {
         }"""
 
 changed = False
+
+# 0) Если map уже есть, но без localhost:3001 — добавить
+if "map $http_origin $cors_origin" in content and "localhost:3001" not in content:
+    content = re.sub(
+        r'("http://localhost:3000"\s+\$http_origin;)',
+        r'\1\n    "http://localhost:3001" $http_origin;',
+        content,
+        count=1
+    )
+    changed = True
+    print("Добавлен origin http://localhost:3001 в CORS map.")
 
 # 1) Добавить map перед "# Default server configuration", если ещё нет
 if "map $http_origin $cors_origin" not in content:
