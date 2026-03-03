@@ -528,6 +528,11 @@ h1, h2, h3, h4, h5, h6 {
     gap: 1px;
   }
 
+  .section-products .product-card .product-titles {
+    align-items: center;
+    text-align: center;
+  }
+
   /* Product name */
   .product-name {
     font-family: 'Commissioner', sans-serif;
