@@ -310,15 +310,15 @@ const Upholstery = () => {
         <div className="padding-global">
           <div className="container-large">
             <div className="all-upholstery-content">
-              <div className="all-upholstery-header inline-flex flex-col justify-start items-center" style={{ gap: '40px' }}>
+              <div className="all-upholstery-header">
                 <div ref={allUpholsteryTitleWrapperRef} className="all-upholstery-title-wrapper">
-                  <h1 className="hero-text" style={{ textTransform: 'uppercase' }}>Варианты отделки кресел</h1>
+                  <h1 className="hero-text">Варианты отделки кресел</h1>
                   <span className="all-upholstery-count">{visibleVariantsCount}</span>
                 </div>
 
                 {/* Фильтр по цветам */}
                 {colors.length > 0 && (
-                  <div className="upholstery-color-filter inline-flex justify-center items-center flex-wrap" style={{ gap: '8px' }}>
+                  <div className="upholstery-color-filter">
                   {colors.map((color) => {
                     const isSelected = selectedColors.includes(color)
                     return (
@@ -389,20 +389,10 @@ const Upholstery = () => {
                 <div ref={upholsteryGridRef}>
                   {selectedColors.length === 0 && collectionGroups ? (
                     collectionGroups.map((group) => (
-                      <div key={group.key} style={{ marginBottom: 96 }}>
-                        <h2
-                          style={{
-                            fontFamily: "'Commissioner', sans-serif",
-                            fontSize: '14px',
-                            fontWeight: 450,
-                            margin: 0,
-                            marginBottom: 32,
-                            textTransform: 'uppercase',
-                            lineHeight: 1.4
-                          }}
-                        >
-                          <span className="text-second-text">Коллекция</span>
-                          <span style={{ color: '#363636', marginLeft: 6 }}>[ {group.name} ]</span>
+                      <div key={group.key} className="upholstery-collection-group">
+                        <h2 className="upholstery-collection-title">
+                          <span className="upholstery-collection-label">Коллекция</span>
+                          <span className="upholstery-collection-name">[ {group.name} ]</span>
                         </h2>
                         <div className="upholstery-grid">
                           {group.variants.map((variant) => (
@@ -440,9 +430,9 @@ const Upholstery = () => {
                           className="upholstery-card flex flex-col gap-4"
                         >
                           <p className="product-type">
-                            <span style={{ color: '#000000' }}>[ </span>
+                            <span className="upholstery-filter-bracket">[ </span>
                             {variant.upholstery_collections?.name || 'Без коллекции'}
-                            <span style={{ color: '#000000' }}> ]</span>
+                            <span className="upholstery-filter-bracket"> ]</span>
                           </p>
                           {variant.image_url ? (
                             <img

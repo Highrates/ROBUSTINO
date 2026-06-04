@@ -10,6 +10,7 @@ import useProductsStore from '@store/productsStore'
 import useUpholsteryStore from '@store/upholsteryStore'
 import useProjectsStore from '@store/projectsStore'
 import { getProductProjects } from '@utils/api'
+import { getCatalogProducts, getNextCatalogProduct, getProductPath } from '@utils/catalogProducts'
 import Loader from '@components/common/Loader'
 
 // Register ScrollTrigger plugin
@@ -61,23 +62,15 @@ const Product = () => {
   const detailsAnimationsRef = useRef([])
   const detailsScrollTriggersRef = useRef([])
 
-  // Скроллим вверх при монтировании страницы
+  // Скроллим вверх при смене модели
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
-    // Дополнительно на случай, если первый вызов не сработал
-    const timeoutId = setTimeout(() => {
-      window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
-    }, 0)
-    return () => clearTimeout(timeoutId)
-  }, [])
+  }, [slug])
 
-  // Загружаем все продукты для навигации (только если их нет или кэш устарел)
+  // Загружаем все продукты для навигации по каталогу
   useEffect(() => {
-    // Загружаем только если продуктов нет или кэш устарел
-    if (products.length === 0) {
-      fetchProducts()
-    }
-  }, [fetchProducts, products.length])
+    fetchProducts()
+  }, [fetchProducts])
 
   // Загружаем варианты обивки (только если их нет или кэш устарел)
   useEffect(() => {
@@ -168,7 +161,7 @@ const Product = () => {
         gsap.set(productInfos, { opacity: 1, x: 0 })
       }
       if (contentBottom) {
-        gsap.set(contentBottom, { opacity: 1, y: 0 })
+        gsap.set(contentBottom, { opacity: 1, y: 0, xPercent: -50 })
       }
       setModelScale(1.1) // Устанавливаем финальный размер модели
       return
@@ -203,7 +196,8 @@ const Product = () => {
     if (contentBottom) {
       gsap.set(contentBottom, {
         opacity: 0,
-        y: 20
+        y: 20,
+        xPercent: -50
       })
     }
 
@@ -335,6 +329,7 @@ const Product = () => {
         const contentBottomAnim = gsap.to(contentBottom, {
           opacity: 1,
           y: 0,
+          xPercent: -50,
           duration: 0.8,
           delay: 0.7,
           ease: 'power3.out',
@@ -474,35 +469,14 @@ const Product = () => {
     }
   }, [currentProduct, prefersReducedMotion])
 
-  // Получаем опубликованные продукты, отсортированные по display_order
-  const publishedProducts = useMemo(() => {
-    if (!products || products.length === 0) return []
-    
-    return products
-      .filter(product => product && product.status === 'published' && !product.show_only_on_main_model)
-      .sort((a, b) => {
-        if (a.display_order !== null && b.display_order !== null) {
-          return a.display_order - b.display_order
-        }
-        if (a.display_order !== null) return -1
-        if (b.display_order !== null) return 1
-        const aDate = a.created_at ? new Date(a.created_at) : new Date(0)
-        const bDate = b.created_at ? new Date(b.created_at) : new Date(0)
-        return bDate - aDate
-      })
-  }, [products])
+  const catalogProducts = useMemo(() => getCatalogProducts(products), [products])
 
-  // Находим следующий продукт
-  const nextProduct = useMemo(() => {
-    if (!currentProduct?.id || !publishedProducts || publishedProducts.length === 0) return null
-    
-    const currentIndex = publishedProducts.findIndex(p => p?.id === currentProduct.id)
-    if (currentIndex === -1) return null
-    
-    // Если это последний продукт, возвращаем первый (циклическая навигация)
-    const nextIndex = (currentIndex + 1) % publishedProducts.length
-    return publishedProducts[nextIndex] || null
-  }, [currentProduct?.id, publishedProducts])
+  const nextProduct = useMemo(
+    () => getNextCatalogProduct(currentProduct, catalogProducts),
+    [currentProduct, catalogProducts]
+  )
+
+  const nextProductPath = useMemo(() => getProductPath(nextProduct), [nextProduct])
 
   // Конфигурации модели — товары, у которых parent_product_id = текущий продукт (из админки)
   const modelConfigurations = useMemo(() => {
@@ -648,7 +622,7 @@ const Product = () => {
     return (
       <div className="product-page relative bg-main-bg">
         <Navbar />
-        <div className="padding-global" style={{ paddingTop: 'calc(var(--navbar-height) + 3.5rem)' }}>
+        <div className="padding-global product-page-content-pad">
           <Loader />
         </div>
       </div>
@@ -660,7 +634,7 @@ const Product = () => {
     return (
       <div className="product-page relative bg-main-bg">
         <Navbar />
-        <div className="padding-global" style={{ paddingTop: 'calc(var(--navbar-height) + 3.5rem)' }}>
+        <div className="padding-global product-page-content-pad">
           <p className="text-red-500">
             Ошибка загрузки продукта: {error || 'Продукт не найден'}
             {slug && ` (slug: ${slug})`}
@@ -678,15 +652,14 @@ const Product = () => {
       <Navbar />
       
       {/* Product Section - Fullscreen 3D Scene */}
-      <section ref={productSectionRef} className="product-section relative" style={{ minHeight: '100vh', paddingTop: 'var(--navbar-height)' }}>
+      <section ref={productSectionRef} className="product-section relative">
         <div className="padding-global">
-          <div className="container-large relative" style={{ height: 'calc(100vh - var(--navbar-height))' }}>
+          <div className="container-large product-section-inner relative">
             
             {/* 3D Model Container - Fullscreen */}
             <div 
               ref={modelContainerRef} 
               className="product-3d-scene absolute inset-0"
-              style={{ height: '100%' }}
             >
               {currentProduct?.model_url ? (
                 <ModelViewer 
@@ -711,39 +684,45 @@ const Product = () => {
             <div 
               ref={productContentTopRef} 
               className="product-content-top absolute inline-flex justify-between items-start"
-              style={{ 
-                top: '40px',
-                left: 0,
-                right: 0,
-                width: '100%',
-                zIndex: 10
-              }}
             >
-              {/* Вернуться в каталог */}
-              <Link 
-                to="/products" 
-                className="text-[14px] uppercase text-main-text hover:text-second-text transition-colors"
-                style={{ fontWeight: 450, padding: 0 }}
-              >
-                Вернуться в каталог
-              </Link>
+              <div className="product-content-nav">
+                {/* Вернуться в каталог */}
+                <Link 
+                  to="/products" 
+                  className="product-nav-link text-[14px] uppercase text-main-text hover:text-second-text transition-colors"
+                >
+                  <span className="product-nav-link-full">Вернуться в каталог</span>
+                  <span className="product-nav-link-short">Каталог</span>
+                </Link>
+
+                {/* Следующая модель */}
+                {nextProductPath ? (
+                <Link 
+                    to={nextProductPath}
+                  className="product-nav-link text-[14px] uppercase text-main-text hover:text-second-text transition-colors"
+                  aria-label={`Следующая модель: ${nextProduct?.name || ''}`}
+                >
+                  <span className="product-nav-link-full">Следующая модель</span>
+                  <span className="product-nav-link-short">Далее</span>
+                </Link>
+                ) : (
+                  <div className="product-nav-link product-nav-link--disabled text-[14px] uppercase text-second-text">
+                    <span className="product-nav-link-full">Следующая модель</span>
+                    <span className="product-nav-link-short">Далее</span>
+                  </div>
+                )}
+              </div>
 
               {/* Product Titles — порядок как на Home и Products: сначала название, затем тип */}
               <div className="product-titles inline-flex flex-col justify-start items-center gap-0.5">
                 {/* Product Name (основной заголовок) */}
-                <h1 
-                  className="text-[24px] text-main-text uppercase"
-                  style={{ fontWeight: 450, letterSpacing: '-0.02em' }}
-                >
+                <h1 className="product-page-title text-[24px] text-main-text uppercase">
                   {currentProduct?.name || 'Название продукта'}
                 </h1>
 
                 {/* Subtitle (тип) */}
                 {currentProduct?.type && (
-                <p 
-                  className="text-[14px] text-second-text uppercase"
-                  style={{ fontWeight: 450 }}
-                >
+                <p className="product-page-subtitle text-[14px] text-second-text uppercase">
                     {currentProduct.type}
                 </p>
                 )}
@@ -782,33 +761,14 @@ const Product = () => {
                   </div>
                 </div>
               </div>
-
-              {/* Следующая модель */}
-              {nextProduct ? (
-              <Link 
-                  to={`/product/${nextProduct.slug || nextProduct.id}`}
-                className="text-[14px] uppercase text-main-text hover:text-second-text transition-colors"
-                style={{ fontWeight: 450, padding: 0 }}
-              >
-                Следующая модель
-              </Link>
-              ) : (
-                <div className="text-[14px] uppercase text-second-text" style={{ fontWeight: 450, padding: 0 }}>
-                  Следующая модель
-                </div>
-              )}
             </div>
 
             {/* Product Content Mid - Absolute Overlay Left: конфигурации / основная модель (первое изображение, клик → страница товара) */}
             {configProductsForBlock.length > 0 && (
               <div
                 ref={productContentMidLeftRef}
-                className="product-content-mid absolute inline-flex flex-col justify-start items-start gap-4"
+                className="product-content-mid product-content-mid-left absolute inline-flex flex-col justify-start items-start gap-4"
                 style={{
-                  left: 'clamp(1rem, 3vw, 2.5rem)',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  zIndex: 10,
                   minHeight: 224,
                   height: contentMidHeight
                 }}
@@ -816,7 +776,7 @@ const Product = () => {
                 <p className="text-[14px] text-second-text uppercase" style={{ fontWeight: 450 }}>
                   Конфигурации модели
                 </p>
-                <div className="grid grid-cols-2 gap-2 w-[208px]">
+                <div className="product-config-grid grid grid-cols-2 gap-2">
                   {configProductsForBlock.map((product) => {
                     const firstImage = product?.images?.[0]
                     const href = `/product/${product.slug || product.id}`
@@ -824,27 +784,20 @@ const Product = () => {
                       <Link
                         key={product.id}
                         to={href}
-                        className="block w-[100px] h-[100px] rounded overflow-hidden focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-second-text hover:outline hover:outline-[0.5px] hover:outline-black/[0.16]"
-                        style={{ borderRadius: '4px' }}
+                        className="product-config-thumb block rounded overflow-hidden focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-second-text hover:outline hover:outline-[0.5px] hover:outline-black/[0.16]"
                         aria-label={`Перейти к товару: ${product.name}`}
                       >
                         {firstImage ? (
                           <img
                             src={firstImage}
                             alt=""
-                            width={100}
-                            height={100}
-                            className="w-[100px] h-[100px] object-cover"
-                            style={{ borderRadius: '4px', objectFit: 'cover' }}
+                            className="product-config-thumb-img object-cover"
                             onError={(e) => {
                               e.target.style.display = 'none'
                             }}
                           />
                         ) : (
-                          <div
-                            className="w-[100px] h-[100px] bg-gray-200 flex items-center justify-center text-second-text text-xs"
-                            style={{ borderRadius: '4px' }}
-                          >
+                          <div className="product-config-thumb-img bg-gray-200 flex items-center justify-center text-second-text text-xs">
                             Нет фото
                           </div>
                         )}
@@ -858,12 +811,8 @@ const Product = () => {
             {/* Product Content Mid - Absolute Overlay Right */}
             <div 
               ref={productContentMidRightRef}
-              className="product-content-mid absolute inline-flex flex-col justify-start items-start gap-4"
+              className="product-content-mid product-content-mid-right absolute inline-flex flex-col justify-start items-start gap-4"
               style={{
-                right: 'clamp(1rem, 3vw, 2.5rem)',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                zIndex: 10,
                 minHeight: 224,
                 height: contentMidHeight
               }}
@@ -913,12 +862,6 @@ const Product = () => {
             <div 
               ref={productContentBottomRef} 
               className="product-content-bottom absolute p-2.5 inline-flex justify-center items-center gap-2.5 overflow-hidden"
-              style={{
-                bottom: '40px',
-                left: '50%',
-                transform: 'translateX(-50%)',
-                zIndex: 10
-              }}
             >
                      <div className="inline-flex justify-start items-center gap-4">
                        {/* 3D Rotate Icon */}
@@ -980,28 +923,24 @@ const Product = () => {
       <section ref={productDetailsSectionRef} className="product-details-section relative" style={{ backgroundColor: '#3d3d3d' }}>
         <div className="padding-global">
           <div className="container-large">
-            <div className="product-details-content" style={{
-              display: 'flex',
-              flexDirection: 'row',
-              gap: '86px',
-              height: 'auto',
-              paddingTop: '56px',
-              paddingBottom: '56px',
-              color: '#fff'
-            }}>
-              {/* Left Column */}
-              <div ref={pdcLeftRef} className="pdc-left" style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '32px',
-                width: '768px',
-                maxWidth: '768px'
-              }}>
+            <div className="product-details-content">
+              {/* Описание — на мобилке первым, на десктопе справа */}
+              <div ref={pdcRightRef} className="product-details-description">
+                {currentProduct?.description && (
+                  <div 
+                    className="project-modal-description"
+                    dangerouslySetInnerHTML={{ __html: currentProduct.description }}
+                  />
+                )}
+              </div>
+
+              {/* Боковая колонка: проекты, фото, ссылки */}
+              <div ref={pdcLeftRef} className="pdc-aside">
                 {/* Реализованные объекты с этой моделью */}
                 {productProjects.length > 0 && (
-                  <div className="project-modal-info-item">
+                  <div className="project-modal-info-item product-details-projects">
                     <p className="project-modal-info-label">Реализованные объекты с этой моделью</p>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '8px' }}>
+                    <div className="product-details-projects-list">
                       {productProjects.slice(0, 7).map((project) => (
                         <span
                           key={project.id}
@@ -1025,7 +964,7 @@ const Product = () => {
 
                 {/* Изображения продукта (начиная со второго) */}
                 {currentProduct?.images && currentProduct.images.length > 1 && (
-                  <div className="project-imgs-wrapper">
+                  <div className="project-imgs-wrapper product-details-gallery">
                     {currentProduct.images.slice(1, 4).map((image, index) => {
                       const isLastVisible = index === 2 && currentProduct.images.length > 4
                       const remainingCount = currentProduct.images.length - 4
@@ -1056,42 +995,28 @@ const Product = () => {
                 )}
 
                 {/* Ссылки: PDF и 3D модель */}
-                <div style={{ display: 'flex', flexDirection: 'row', gap: '8px', flexWrap: 'wrap' }}>
+                <div className="product-details-links">
                   <a
                     href={currentProduct?.document_url || '#'}
                     target={currentProduct?.document_url ? '_blank' : undefined}
                     rel={currentProduct?.document_url ? 'noopener noreferrer' : undefined}
-                    style={{ fontFamily: 'Commissioner', fontSize: '14px', fontWeight: 450, textTransform: 'uppercase', textDecoration: 'none', color: '#fff', cursor: currentProduct?.document_url ? 'pointer' : 'default', opacity: currentProduct?.document_url ? 1 : 0.6, transition: 'opacity 0.3s ease' }}
-                    onMouseEnter={(e) => currentProduct?.document_url && (e.currentTarget.style.opacity = '0.7')}
-                    onMouseLeave={(e) => currentProduct?.document_url && (e.currentTarget.style.opacity = '1')}
+                    className={`product-details-link${currentProduct?.document_url ? '' : ' product-details-link--disabled'}`}
                   >
-                    <span style={{ color: 'rgba(255,255,255,0.7)' }}>[ </span>
+                    <span className="product-details-link-bracket">[ </span>
                     <span>Презентация кресла PDF</span>
-                    <span style={{ color: 'rgba(255,255,255,0.7)' }}> ]</span>
+                    <span className="product-details-link-bracket"> ]</span>
                   </a>
                   <a
                     href={currentProduct?.model_url || '#'}
                     target={currentProduct?.model_url ? '_blank' : undefined}
                     rel={currentProduct?.model_url ? 'noopener noreferrer' : undefined}
-                    style={{ fontFamily: 'Commissioner', fontSize: '14px', fontWeight: 450, textTransform: 'uppercase', textDecoration: 'none', color: '#fff', cursor: currentProduct?.model_url ? 'pointer' : 'default', opacity: currentProduct?.model_url ? 1 : 0.6, transition: 'opacity 0.3s ease' }}
-                    onMouseEnter={(e) => currentProduct?.model_url && (e.currentTarget.style.opacity = '0.7')}
-                    onMouseLeave={(e) => currentProduct?.model_url && (e.currentTarget.style.opacity = '1')}
+                    className={`product-details-link${currentProduct?.model_url ? '' : ' product-details-link--disabled'}`}
                   >
-                    <span style={{ color: 'rgba(255,255,255,0.7)' }}>[ </span>
+                    <span className="product-details-link-bracket">[ </span>
                     <span>Загрузить 3D модель</span>
-                    <span style={{ color: 'rgba(255,255,255,0.7)' }}> ]</span>
+                    <span className="product-details-link-bracket"> ]</span>
                   </a>
                 </div>
-              </div>
-
-              {/* Right Column */}
-              <div ref={pdcRightRef} className="pdc-right" style={{ flex: 1 }}>
-                {currentProduct?.description && (
-                  <div 
-                    className="project-modal-description"
-                    dangerouslySetInnerHTML={{ __html: currentProduct.description }}
-                  />
-                )}
               </div>
             </div>
           </div>

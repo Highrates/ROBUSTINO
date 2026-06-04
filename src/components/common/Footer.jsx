@@ -5,33 +5,28 @@ const Footer = () => {
   const { presentation, fetchPresentation } = usePresentationStore()
 
   useEffect(() => {
-    fetchPresentation() // Загружаем презентацию для footer
+    fetchPresentation()
   }, [fetchPresentation])
 
   return (
     <footer>
       <div className="padding-global">
         <div className="container-large">
-          <div className="footer-wrap flex flex-row items-center justify-between" style={{ paddingTop: '24px', paddingBottom: '24px', borderTop: '1px solid rgba(0, 0, 0, 0.24)' }}>
-            {/* Презентация PDF */}
+          <div className="footer-wrap">
             {presentation && presentation.document_url && (
-              <a 
-                href={presentation.document_url} 
-                target="_blank" 
+              <a
+                href={presentation.document_url}
+                target="_blank"
                 rel="noopener noreferrer"
-                style={{ fontFamily: 'Commissioner', fontSize: '14px', fontWeight: 450, textTransform: 'uppercase', textDecoration: 'none', color: 'inherit', cursor: 'pointer', transition: 'opacity 0.3s ease' }}
-                onMouseEnter={(e) => e.currentTarget.style.opacity = '0.7'}
-                onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+                className="footer-link"
               >
-                <span style={{ color: '#363636' }}>[ </span>
-                <span style={{ color: '#A9A9A9' }}>Презентация PDF</span>
-                <span style={{ color: '#363636' }}> ]</span>
+                <span className="footer-link-bracket">[ </span>
+                <span className="footer-link-text">Презентация PDF</span>
+                <span className="footer-link-bracket"> ]</span>
               </a>
             )}
 
-            {/* @Robustino */}
-            <span style={{ fontFamily: 'Commissioner', fontSize: '14px', fontWeight: 450, color: '#363636', textTransform: 'uppercase' }}>@Robustino</span>
-
+            <span className="footer-brand">@Robustino</span>
           </div>
         </div>
       </div>
@@ -40,4 +35,3 @@ const Footer = () => {
 }
 
 export default Footer
-

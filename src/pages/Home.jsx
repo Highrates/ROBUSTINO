@@ -7,6 +7,7 @@ import Navbar from '@components/product/Navbar'
 import Footer from '@components/common/Footer'
 import ContactsSection from '@components/common/ContactsSection'
 import useGSAP from '@hooks/useGSAP'
+import { prefersReducedMotion } from '@utils/motion'
 import useProductsStore from '@store/productsStore'
 import useProjectsStore from '@store/projectsStore'
 import useArticlesStore from '@store/articlesStore'
@@ -222,24 +223,30 @@ const Home = () => {
 
     let cleanup = null
 
-    // Небольшая задержка, чтобы убедиться, что DOM обновлен
     const timeoutId = setTimeout(() => {
       const container = productsScrollContainerRef.current
       const arrow = productsScrollArrowRef.current
       
       if (!container || !arrow) return
 
+      const isMobile = window.matchMedia('(max-width: 767px)').matches
+      if (isMobile || prefersReducedMotion()) {
+        arrow.style.display = 'none'
+        return
+      }
+
       const updateArrowPosition = () => {
         const containerRect = container.getBoundingClientRect()
-        // Позиция иконки относительно контейнера (между 3 и 4 карточкой)
-        const arrowLeft = 300 * 3 + 80 * 3 + 150 - 34.5 - 186 + 120
+        const wrapper = container.querySelector('.products-scroll-wrapper')
+        const cards = container.querySelectorAll('.product-card')
+        const cardWidth = cards[0]?.offsetWidth ?? 300
+        const gap = wrapper ? parseFloat(getComputedStyle(wrapper).gap) || 80 : 80
+        const arrowLeft = cardWidth * 3 + gap * 3 + cardWidth / 2
         const leftPosition = containerRect.left + arrowLeft
         const topPosition = containerRect.top + containerRect.height / 2
         
-        // Обновляем обе позиции (горизонтальную и вертикальную)
         arrow.style.left = `${leftPosition}px`
         arrow.style.top = `${topPosition}px`
-        // Убеждаемся, что стрелочка видна (не трогаем opacity - это контролирует GSAP анимация)
         arrow.style.display = 'block'
         arrow.style.visibility = 'visible'
       }
@@ -270,7 +277,6 @@ const Home = () => {
   // Анимация карточек товаров и стрелочки - после загрузки продуктов
   useEffect(() => {
     if (publishedProducts.length > 0 && productsSectionRef.current) {
-      // Убиваем предыдущую анимацию, если она существует
       if (productCardsAnimationRef.current) {
         if (productCardsAnimationRef.current.scrollTrigger) {
           productCardsAnimationRef.current.scrollTrigger.kill()
@@ -279,16 +285,20 @@ const Home = () => {
         productCardsAnimationRef.current = null
       }
 
-      // Небольшая задержка, чтобы убедиться, что DOM обновлен
       const timeoutId = setTimeout(() => {
         const productCards = productsSectionRef.current.querySelectorAll('.product-card')
         const arrow = productsScrollArrowRef.current
+
+        if (prefersReducedMotion()) {
+          if (productCards.length > 0) {
+            gsap.set(productCards, { opacity: 1, x: 0, scale: 1 })
+          }
+          if (arrow) gsap.set(arrow, { opacity: 0 })
+          return
+        }
         
-        // Устанавливаем начальное состояние стрелочки (скрыта)
         if (arrow) {
-          gsap.set(arrow, {
-            opacity: 0
-          })
+          gsap.set(arrow, { opacity: 0 })
         }
         
         if (productCards.length > 0) {
@@ -388,6 +398,7 @@ const Home = () => {
       gsap.from(heroImageRef.current, {
         y: 80,
         scale: 0.9,
+        transformOrigin: '50% 50%',
         duration: 1.2,
         delay: 0.4,
         ease: 'power3.out'
@@ -707,9 +718,9 @@ const Home = () => {
   // Анимация для второй и третьей колонок projects - после загрузки проектов
   useEffect(() => {
     if (projects.length > 0 && projectsSectionRef.current) {
-      // Небольшая задержка, чтобы убедиться, что DOM обновлен
       const timeoutId = setTimeout(() => {
-        // 4. Вторая колонка (project-with-pic) - карточки с изображениями
+        if (prefersReducedMotion()) return
+
         const projectWithPic = projectsSectionRef.current.querySelectorAll('.project-with-pic')
         
         if (projectWithPic.length > 0) {
@@ -815,6 +826,13 @@ const Home = () => {
       const timeoutId = setTimeout(() => {
         const articlesElements = articlesSectionRef.current.querySelectorAll('.article')
         
+        if (prefersReducedMotion()) {
+          if (articlesElements.length > 0) {
+            gsap.set(articlesElements, { opacity: 1, y: 0 })
+          }
+          return
+        }
+
         if (articlesElements.length > 0) {
           // Устанавливаем начальное состояние
           gsap.set(articlesElements, {
@@ -931,7 +949,11 @@ const Home = () => {
 
       // Небольшая задержка, чтобы убедиться, что DOM обновлен
       const timeoutId = setTimeout(() => {
-        // Устанавливаем начальное состояние
+        if (prefersReducedMotion()) {
+          gsap.set(faqQuestionsWrapperRef.current, { opacity: 1, y: 0 })
+          return
+        }
+
         gsap.set(faqQuestionsWrapperRef.current, {
           opacity: 0,
           y: 40
@@ -974,11 +996,11 @@ const Home = () => {
   }, [faqs.length])
 
   return (
-    <div className="home-page relative bg-main-bg" style={{ zIndex: 1 }}>
+    <div className="home-page relative bg-main-bg">
       <Navbar />
       
       {/* Main Section - 100vh */}
-      <section className="home-section flex flex-col" style={{ minHeight: '100vh', zIndex: 1 }}>
+      <section className="home-section flex flex-col">
         <div className="padding-global flex-1 flex flex-col">
           <div className="container-large flex-1 flex flex-col">
             {/* Hero Content */}
@@ -1013,15 +1035,10 @@ const Home = () => {
               {/* Изображение */}
               <img 
                 ref={heroImageRef}
-                src="/hero-img.png" 
+                src="/hero-Archi.png" 
                 alt="Robustino кресла"
-                className="hero-image absolute md:top-[45%] top-[55%]"
-                style={{
-                  zIndex: 20,
-                  objectFit: 'cover',
-                  left: '50%',
-                  transform: 'translateX(-50%)'
-                }}
+                className="hero-image relative mt-6 md:absolute md:mt-0 md:top-[64%]"
+                style={{ zIndex: 20 }}
               />
             </div>
           </div>
@@ -1029,7 +1046,7 @@ const Home = () => {
       </section>
 
       {/* About Section */}
-      <section ref={aboutSectionRef} style={{ minHeight: '100vh' }}>
+      <section ref={aboutSectionRef} className="section-about">
         <div className="padding-global">
           <div className="container-large">
             <div className="about-content flex flex-col">
@@ -1043,28 +1060,28 @@ const Home = () => {
               
               <h1 ref={aboutTextRef} className="about-text uppercase">
                 <span className="md:hidden">
-                  ПЕРЕДОВОЙ ДИЗАЙН И
+                  ПЕРЕДОВОЙ ДИЗАЙН И{' '}
                   <img className="inline-icon" src="/about-pic1.png" alt="" />
-                  КОМФОРТ<br />
+                  {' '}КОМФОРТ<br />
                   СОВРЕМЕННЫЕ ТЕХНОЛОГИ, ECO RECYCLING<br />
-                  ВЫСОКИЙ
+                  ВЫСОКИЙ{' '}
                   <img className="inline-icon" src="/about-pic2.png" alt="" />
-                  РЕСУРС И БЕЗОПАСНОСТЬ<br />
+                  {' '}РЕСУРС И БЕЗОПАСНОСТЬ<br />
                   ТЕХНИЧЕСКАЯ ПОДДЕРЖКА ПРОЕКТИРОВАНИЯ<br />
-                  И ЭКСПЛУАТАЦИИ
-                  <img className="inline-icon" src="/about-pic1.png" alt="" />
+                  И ЭКСПЛУАТАЦИИ{' '}
+                  <img className="inline-icon" src="/about-pic3.png" alt="" />
                 </span>
                 <span className="hidden md:inline">
-                  ПЕРЕДОВОЙ ДИЗАЙН И
+                  ПЕРЕДОВОЙ ДИЗАЙН И{' '}
                   <img className="inline-icon" src="/about-pic1.png" alt="" />
-                  КОМФОРТ<br />
+                  {' '}КОМФОРТ<br />
                   СОВРЕМЕННЫЕ ТЕХНОЛОГИ, ECO RECYCLING<br />
-                  ВЫСОКИЙ
+                  ВЫСОКИЙ{' '}
                   <img className="inline-icon" src="/about-pic2.png" alt="" />
-                  РЕСУРС И БЕЗОПАСНОСТЬ<br />
+                  {' '}РЕСУРС И БЕЗОПАСНОСТЬ<br />
                   ТЕХНИЧЕСКАЯ ПОДДЕРЖКА ПРОЕКТИРОВАНИЯ<br />
-                  И ЭКСПЛУАТАЦИИ
-                  <img className="inline-icon" src="/about-pic1.png" alt="" />
+                  И ЭКСПЛУАТАЦИИ{' '}
+                  <img className="inline-icon" src="/about-pic3.png" alt="" />
                 </span>
               </h1>
             </div>
@@ -1073,7 +1090,7 @@ const Home = () => {
       </section>
 
       {/* Products Section */}
-      <section ref={productsSectionRef} className="section-products" style={{ minHeight: '100vh' }}>
+      <section ref={productsSectionRef} className="section-products">
         <div className="padding-top-bottom">
           <div ref={productsTopRef} className="products-top">
             <div className="padding-global">
@@ -1136,11 +1153,14 @@ const Home = () => {
               onClick={(e) => {
                 e.preventDefault()
                 e.stopPropagation()
-                if (productsScrollContainerRef.current) {
-                  // Прокручиваем на ширину одной карточки + gap (300px + 80px = 380px)
-                  productsScrollContainerRef.current.scrollBy({
-                    left: 380,
-                    behavior: 'smooth'
+                const container = productsScrollContainerRef.current
+                const wrapper = container?.querySelector('.products-scroll-wrapper')
+                const firstCard = container?.querySelector('.product-card')
+                if (container && firstCard && wrapper) {
+                  const gap = parseFloat(getComputedStyle(wrapper).gap) || 80
+                  container.scrollBy({
+                    left: firstCard.offsetWidth + gap,
+                    behavior: prefersReducedMotion() ? 'auto' : 'smooth'
                   })
                 }
               }}
@@ -1150,7 +1170,7 @@ const Home = () => {
       </section>
 
       {/* Projects Section */}
-      <section ref={projectsSectionRef} className="section-projects" style={{ minHeight: '90vh' }}>
+      <section ref={projectsSectionRef} className="section-projects">
         <div className="padding-global">
           <div className="container-large">
             <div className="projects flex flex-col gap-[86px]">
@@ -1185,9 +1205,8 @@ const Home = () => {
                       {projects.slice(0, 3).map((project) => (
                         <div
                           key={project.id}
-                          className="project-with-pic"
+                          className="project-with-pic is-clickable"
                           onClick={() => handleOpenModal(project)}
-                          style={{ cursor: 'pointer' }}
                         >
                           {project.images && project.images.length > 0 && project.images[0] ? (
                             <img
@@ -1216,9 +1235,8 @@ const Home = () => {
                         {projects.slice(3, 9).map((project) => (
                           <div
                             key={project.id}
-                            className="project-link"
+                            className="project-link is-clickable"
                             onClick={() => handleOpenModal(project)}
-                            style={{ cursor: 'pointer' }}
                           >
                             <span className="project-link-name">{project.name}</span>
                             <img src="/send.svg" alt="" className="project-link-icon" />
@@ -1235,7 +1253,7 @@ const Home = () => {
       </section>
 
       {/* Articles Section */}
-      <section ref={articlesSectionRef} className="section-articles" style={{ minHeight: '80vh' }}>
+      <section ref={articlesSectionRef} className="section-articles">
         <div className="padding-global">
           <div className="container-large">
             <div className="articles-content">
@@ -1256,8 +1274,8 @@ const Home = () => {
                       to={`/article/${article.slug || article.id}`}
                       className="article flex flex-col gap-4"
                     >
-                      <p className="product-type">
-                        <span style={{ color: '#000000' }}>[ </span>
+                      <p className="product-type article-date">
+                        <span className="article-date-bracket">[ </span>
                         {(article.article_date || article.published_at || article.created_at)
                           ? new Date(article.article_date || article.published_at || article.created_at).toLocaleDateString('ru-RU', {
                               day: 'numeric',
@@ -1266,7 +1284,7 @@ const Home = () => {
                             })
                           : ''
                         }
-                        <span style={{ color: '#000000' }}> ]</span>
+                        <span className="article-date-bracket"> ]</span>
                       </p>
                       {article.cover_image ? (
                         <img
@@ -1292,10 +1310,10 @@ const Home = () => {
       </section>
 
       {/* FAQ Section */}
-      <section ref={faqSectionRef} className="section-FAQ" style={{ minHeight: '100vh' }}>
+      <section ref={faqSectionRef} className="section-FAQ">
         <div className="padding-global">
           <div className="container-large">
-            <div className="faq flex flex-col gap-[86px]" style={{ paddingTop: '56px', paddingBottom: '56px' }}>
+            <div className="faq">
               <h4 ref={faqTitleRef} className="second-title">FAQ</h4>
               <div ref={faqContentRef} className="faq-content flex justify-between">
                 {/* Links Wrapper */}

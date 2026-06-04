@@ -16,6 +16,8 @@ const ImageUpload = ({
   const [uploading, setUploading] = useState(false)
   const [uploadingIndex, setUploadingIndex] = useState(null)
   const [dragActive, setDragActive] = useState(false)
+  const [reorderDragIndex, setReorderDragIndex] = useState(null)
+  const [reorderOverIndex, setReorderOverIndex] = useState(null)
   const fileInputRef = useRef(null)
   const [localError, setLocalError] = useState(null)
 
@@ -126,6 +128,44 @@ const ImageUpload = ({
     }
   }
 
+  const handleReorderDragStart = (e, index) => {
+    setReorderDragIndex(index)
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', String(index))
+  }
+
+  const handleReorderDragOver = (e, index) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    if (reorderDragIndex !== null && reorderDragIndex !== index) {
+      setReorderOverIndex(index)
+    }
+  }
+
+  const handleReorderDrop = (e, dropIndex) => {
+    e.preventDefault()
+
+    const dragIndex = reorderDragIndex
+    if (dragIndex === null || dragIndex === dropIndex) {
+      setReorderDragIndex(null)
+      setReorderOverIndex(null)
+      return
+    }
+
+    const newUrls = [...value]
+    const [moved] = newUrls.splice(dragIndex, 1)
+    newUrls.splice(dropIndex, 0, moved)
+
+    if (onChange) onChange(newUrls)
+    setReorderDragIndex(null)
+    setReorderOverIndex(null)
+  }
+
+  const handleReorderDragEnd = () => {
+    setReorderDragIndex(null)
+    setReorderOverIndex(null)
+  }
+
   const canAddMore = !maxFiles || value.length < maxFiles
 
   return (
@@ -139,27 +179,54 @@ const ImageUpload = ({
 
       {/* Превью загруженных изображений */}
       {value.length > 0 && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-          {value.map((url, index) => (
-            <div key={index} className="relative group">
-              <img
-                src={url}
-                alt={`Preview ${index + 1}`}
-                className="w-full h-32 object-cover rounded-lg border border-gray-300"
-              />
-              <button
-                type="button"
-                onClick={() => handleRemove(index)}
-                className="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                title="Удалить"
+        <>
+          {value.length > 1 && (
+            <p className="text-xs text-gray-500 mb-2">
+              Перетащите изображения, чтобы изменить порядок
+            </p>
+          )}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+            {value.map((url, index) => (
+              <div
+                key={`${url}-${index}`}
+                draggable
+                onDragStart={(e) => handleReorderDragStart(e, index)}
+                onDragOver={(e) => handleReorderDragOver(e, index)}
+                onDrop={(e) => handleReorderDrop(e, index)}
+                onDragEnd={handleReorderDragEnd}
+                onDragLeave={() => {
+                  if (reorderOverIndex === index) setReorderOverIndex(null)
+                }}
+                className={`relative group cursor-grab active:cursor-grabbing rounded-lg transition-all ${
+                  reorderDragIndex === index ? 'opacity-50 scale-95' : ''
+                } ${
+                  reorderOverIndex === index ? 'ring-2 ring-blue-500 ring-offset-2' : ''
+                }`}
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-          ))}
-        </div>
+                <img
+                  src={url}
+                  alt={`Preview ${index + 1}`}
+                  draggable={false}
+                  className="w-full h-32 object-cover rounded-lg border border-gray-300 pointer-events-none select-none"
+                />
+                <span className="absolute top-2 left-2 bg-black/50 text-white text-xs px-1.5 py-0.5 rounded pointer-events-none">
+                  {index + 1}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleRemove(index)}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  className="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                  title="Удалить"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            ))}
+          </div>
+        </>
       )}
 
       {/* Зона загрузки */}

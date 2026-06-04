@@ -1,6 +1,7 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
+import { getNavbarHeight } from '@utils/layout'
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -88,11 +89,11 @@ const Navbar = () => {
     <nav className={`navbar ${isMenuOpen ? 'menu-open' : ''} ${isClosing ? 'menu-closing' : ''}`}>
       <div className="padding-global">
         <div className="container-large">
-          <div className="nav-content self-stretch pt-4 md:pt-10 inline-flex justify-between items-center w-full">
+          <div className="nav-content self-stretch pt-2 pb-2 md:pt-10 md:pb-0 inline-flex justify-between items-center w-full">
             {/* Logo Wrap */}
             <Link 
               to="/" 
-              className="logo-wrap w-[50px] h-[50px] flex items-center justify-start"
+              className="logo-wrap w-9 h-9 md:w-[50px] md:h-[50px] flex items-center justify-start"
               onClick={() => isMenuOpen && handleCloseMenu()}
             >
               <img 
@@ -124,7 +125,7 @@ const Navbar = () => {
                       const targetElement = document.getElementById(targetId)
                       if (targetElement) {
                         // Учитываем высоту navbar при скролле
-                        const navbarHeight = 90 // var(--navbar-height)
+                        const navbarHeight = getNavbarHeight()
                         const elementPosition = targetElement.getBoundingClientRect().top + window.pageYOffset
                         const offsetPosition = elementPosition - navbarHeight
                         
@@ -199,7 +200,7 @@ const Navbar = () => {
 
             {/* Burger Wrap - всегда видим */}
             <button
-              className="burger-wrap w-[50px] h-[50px] flex items-center justify-end"
+              className="burger-wrap w-9 h-9 md:w-[50px] md:h-[50px] flex items-center justify-end"
               onClick={() => isMenuOpen ? handleCloseMenu() : handleOpenMenu()}
               aria-label="Toggle menu"
             >
@@ -246,7 +247,7 @@ const Navbar = () => {
                     const targetElement = document.getElementById(targetId)
                     if (targetElement) {
                       // Учитываем высоту navbar при скролле
-                      const navbarHeight = 90 // var(--navbar-height)
+                      const navbarHeight = getNavbarHeight()
                       const elementPosition = targetElement.getBoundingClientRect().top + window.pageYOffset
                       const offsetPosition = elementPosition - navbarHeight
                       

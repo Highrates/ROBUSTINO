@@ -304,9 +304,8 @@ const Projects = () => {
                     {publishedProjects.slice(0, 3).map((project) => (
                       <div
                         key={project.id}
-                        className="project-with-pic"
+                        className="project-with-pic is-clickable"
                         onClick={() => handleOpenModal(project)}
-                        style={{ cursor: 'pointer' }}
                       >
                         {project.images && project.images.length > 0 && project.images[0] ? (
                           <img

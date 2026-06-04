@@ -209,8 +209,8 @@ const Articles = () => {
                       to={`/article/${article.slug || article.id}`}
                       className="article flex flex-col gap-4"
                     >
-                      <p className="product-type">
-                        <span style={{ color: '#000000' }}>[ </span>
+                      <p className="product-type article-date">
+                        <span className="article-date-bracket">[ </span>
                         {(article.article_date || article.published_at || article.created_at)
                           ? new Date(article.article_date || article.published_at || article.created_at).toLocaleDateString('ru-RU', {
                               day: 'numeric',
@@ -219,7 +219,7 @@ const Articles = () => {
                             })
                           : ''
                         }
-                        <span style={{ color: '#000000' }}> ]</span>
+                        <span className="article-date-bracket"> ]</span>
                       </p>
                       {article.cover_image ? (
                         <img

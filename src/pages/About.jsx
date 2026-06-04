@@ -5,6 +5,7 @@ import Navbar from '@components/product/Navbar'
 import ContactsSection from '@components/common/ContactsSection'
 import Footer from '@components/common/Footer'
 import useGSAP from '@hooks/useGSAP'
+import { getNavbarHeight } from '@utils/layout'
 
 // Register ScrollTrigger plugin
 gsap.registerPlugin(ScrollTrigger)
@@ -43,7 +44,7 @@ const About = () => {
       const aboutSection = aboutSectionRef.current
       const sectionBottom = aboutSection.offsetTop + aboutSection.offsetHeight
       const scrollY = window.scrollY
-      const navbarHeight = 90 // var(--navbar-height)
+      const navbarHeight = getNavbarHeight()
 
       // Если navbar находится в пределах секции About-page-section
       if (scrollY + navbarHeight < sectionBottom) {
@@ -110,59 +111,12 @@ const About = () => {
   return (
     <div className="about-page">
       <Navbar />
-      <section 
-        ref={aboutSectionRef}
-        className="About-page-section" 
-        style={{
-          height: '100vh',
-          minHeight: '100vh',
-          backgroundImage: 'url(/robustino-about.jpg)',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}
-      >
+      <section ref={aboutSectionRef} className="About-page-section">
         <div className="padding-global">
           <div className="container-large">
-            <div 
-              ref={aboutTitlesRef}
-              className="about-titles"
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '16px',
-                alignItems: 'center'
-              }}
-            >
-              <h1
-                style={{
-                  fontFamily: "'Commissioner', sans-serif",
-                  fontWeight: 450,
-                  letterSpacing: '-0.04em',
-                  textAlign: 'center',
-                  fontSize: '7vw',
-                  lineHeight: '7vw',
-                  color: 'white',
-                  margin: 0
-                }}
-              >
-                ROBUSTINO
-              </h1>
-              <p
-                style={{
-                  fontFamily: "'Commissioner', sans-serif",
-                  fontSize: '14px',
-                  fontWeight: 450,
-                  color: 'white',
-                  margin: 0,
-                  textTransform: 'uppercase'
-                }}
-              >
-                надежные и стильные кресла
-              </p>
+            <div ref={aboutTitlesRef} className="about-titles">
+              <h1 className="about-hero-title">ROBUSTINO</h1>
+              <p className="about-hero-subtitle">надежные и стильные кресла</p>
             </div>
           </div>
         </div>
@@ -171,267 +125,78 @@ const About = () => {
       <section ref={aboutContentSectionRef} className="about-page-content-section">
         <div className="padding-global">
           <div className="container-large">
-            <div 
-              className="about-page-content"
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                paddingTop: '56px',
-                paddingBottom: '56px',
-                gap: '86px',
-                width: '100%',
-                alignItems: 'center'
-              }}
-            >
-              <div style={{ width: '100%', textAlign: 'left' }}>
+            <div className="about-page-content">
+              <div className="about-page-content-header">
                 <h2 ref={secondTitleRef} className="second-title">История</h2>
               </div>
-              <div 
-                ref={aboutContentRightRef}
-                className="about-page-content-right"
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '40px',
-                  maxWidth: '1120px',
-                  alignItems: 'center'
-                }}
-              >
-                <div 
-                  className="about-page-story"
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '24px'
-                  }}
-                >
-                  <div 
-                    className="about-page-story-item"
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'row',
-                      justifyContent: 'space-between',
-                      alignItems: 'flex-start',
-                      gap: '172px',
-                      width: '100%'
-                    }}
-                  >
-                    <div style={{ minWidth: '180px' }}>
-                      <p 
-                        className="product-type"
-                        style={{
-                          fontFamily: "'Commissioner', sans-serif",
-                          fontSize: '14px',
-                          fontWeight: 450,
-                          color: '#A9A9A9',
-                          margin: 0,
-                          textTransform: 'uppercase',
-                          flexShrink: 0
-                        }}
-                      >
+              <div ref={aboutContentRightRef} className="about-page-content-right">
+                <div className="about-page-story">
+                  <div className="about-page-story-item">
+                    <div className="about-page-story-label">
+                      <p className="about-page-story-date">
                         с 2007 года
                       </p>
                     </div>
-                    <div style={{ width: '100%' }}>
-                      <p
-                        style={{
-                          fontFamily: "'Commissioner', sans-serif",
-                          fontSize: '20px',
-                          fontWeight: 450,
-                          lineHeight: '1.5',
-                          color: '#363636',
-                          margin: 0
-                        }}
-                      >
+                    <div className="about-page-story-body">
+                      <p className="about-page-story-text">
                         Мы производим и торгуем мебелью. Проектируем офисные и общественные помещения, в том числе актовые, театральные, конференц, кинозалы, аэровокзалы, медицинские учреждения.
                       </p>
                     </div>
                   </div>
-                  <div 
-                    className="about-page-story-item"
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'row',
-                      justifyContent: 'space-between',
-                      alignItems: 'flex-start',
-                      gap: '172px',
-                      width: '100%'
-                    }}
-                  >
-                    <div style={{ minWidth: '180px' }}>
-                      <p 
-                        className="product-type"
-                        style={{
-                          fontFamily: "'Commissioner', sans-serif",
-                          fontSize: '14px',
-                          fontWeight: 450,
-                          color: '#A9A9A9',
-                          margin: 0,
-                          textTransform: 'uppercase',
-                          flexShrink: 0
-                        }}
-                      >
+                  <div className="about-page-story-item">
+                    <div className="about-page-story-label">
+                      <p className="about-page-story-date">
                         На 2009 год
                       </p>
                     </div>
-                    <div style={{ width: '100%' }}>
-                      <p
-                        style={{
-                          fontFamily: "'Commissioner', sans-serif",
-                          fontSize: '20px',
-                          fontWeight: 450,
-                          lineHeight: '1.5',
-                          color: '#363636',
-                          margin: 0
-                        }}
-                      >
+                    <div className="about-page-story-body">
+                      <p className="about-page-story-text">
                         Дилер в России большинства отечественных и зарубежных фабрик по производству кресел для залов.
                       </p>
                     </div>
                   </div>
-                  <div 
-                    className="about-page-story-item"
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'row',
-                      justifyContent: 'space-between',
-                      alignItems: 'flex-start',
-                      gap: '172px',
-                      width: '100%'
-                    }}
-                  >
-                    <div style={{ minWidth: '180px' }}>
-                      <p 
-                        className="product-type"
-                        style={{
-                          fontFamily: "'Commissioner', sans-serif",
-                          fontSize: '14px',
-                          fontWeight: 450,
-                          color: '#A9A9A9',
-                          margin: 0,
-                          textTransform: 'uppercase',
-                          flexShrink: 0
-                        }}
-                      >
+                  <div className="about-page-story-item">
+                    <div className="about-page-story-label">
+                      <p className="about-page-story-date">
                         С сентября 2011 года
                       </p>
                     </div>
-                    <div style={{ width: '100%' }}>
-                      <p
-                        style={{
-                          fontFamily: "'Commissioner', sans-serif",
-                          fontSize: '20px',
-                          fontWeight: 450,
-                          lineHeight: '1.5',
-                          color: '#363636',
-                          margin: 0
-                        }}
-                      >
+                    <div className="about-page-story-body">
+                      <p className="about-page-story-text">
                         Выпуск собственных кресел для залов и зон ожидания под маркой Ratco-Carandi из импортируемых из КНР комплектующих в Обнинске, Калужская обл. площадью 625 кв.м.
                       </p>
                     </div>
                   </div>
-                  <div 
-                    className="about-page-story-item"
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'row',
-                      justifyContent: 'space-between',
-                      alignItems: 'flex-start',
-                      gap: '172px',
-                      width: '100%'
-                    }}
-                  >
-                    <div style={{ minWidth: '180px' }}>
-                      <p 
-                        className="product-type"
-                        style={{
-                          fontFamily: "'Commissioner', sans-serif",
-                          fontSize: '14px',
-                          fontWeight: 450,
-                          color: '#A9A9A9',
-                          margin: 0,
-                          textTransform: 'uppercase',
-                          flexShrink: 0
-                        }}
-                      >
+                  <div className="about-page-story-item">
+                    <div className="about-page-story-label">
+                      <p className="about-page-story-date">
                         К январю 2012 года
                       </p>
                     </div>
-                    <div style={{ width: '100%' }}>
-                      <p
-                        style={{
-                          fontFamily: "'Commissioner', sans-serif",
-                          fontSize: '20px',
-                          fontWeight: 450,
-                          lineHeight: '1.5',
-                          color: '#363636',
-                          margin: 0
-                        }}
-                      >
+                    <div className="about-page-story-body">
+                      <p className="about-page-story-text">
                         Мы увеличили производственные мощности и складские запасы комплектующих, чтобы производить и отгружать до 300 мест в неделю любого цвета и комплектации.
                       </p>
                     </div>
                   </div>
-                  <div 
-                    className="about-page-story-item"
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'row',
-                      justifyContent: 'space-between',
-                      alignItems: 'flex-start',
-                      gap: '172px',
-                      width: '100%'
-                    }}
-                  >
-                    <div style={{ minWidth: '180px' }}>
-                      <p 
-                        className="product-type"
-                        style={{
-                          fontFamily: "'Commissioner', sans-serif",
-                          fontSize: '14px',
-                          fontWeight: 450,
-                          color: '#A9A9A9',
-                          margin: 0,
-                          textTransform: 'uppercase',
-                          flexShrink: 0
-                        }}
-                      >
+                  <div className="about-page-story-item">
+                    <div className="about-page-story-label">
+                      <p className="about-page-story-date">
                         В 2013 году
                       </p>
                     </div>
-                    <div style={{ width: '100%' }}>
-                      <p
-                        style={{
-                          fontFamily: "'Commissioner', sans-serif",
-                          fontSize: '20px',
-                          fontWeight: 450,
-                          lineHeight: '1.5',
-                          color: '#363636',
-                          margin: 0
-                        }}
-                      >
+                    <div className="about-page-story-body">
+                      <p className="about-page-story-text">
                         Приняли программу 100% импортозамещения и закупили оборудование для производства комплектующих:
                       </p>
-                      <ul
-                        style={{
-                          fontFamily: "'Commissioner', sans-serif",
-                          fontSize: '20px',
-                          fontWeight: 450,
-                          lineHeight: '1.5',
-                          color: '#363636',
-                          margin: '16px 0 0 0',
-                          paddingLeft: '20px',
-                          listStyleType: 'disc'
-                        }}
-                      >
-                        <li style={{ marginBottom: '8px' }}>
+                      <ul className="about-page-story-list">
+                        <li>
                           пресс-формы для ТПА, (13 форм весом от 120 до 3000 кг);
                         </li>
-                        <li style={{ marginBottom: '8px' }}>
+                        <li>
                           заливочное оборудования для производства ФППУ (Заливочная машина высокого давления);
                         </li>
-                        <li style={{ marginBottom: '8px' }}>
+                        <li>
                           формы для ФППУ (24 формы по 4 комплекта на каждую модель для увеличения скорости производства);
                         </li>
                         <li>
@@ -440,206 +205,75 @@ const About = () => {
                       </ul>
                     </div>
                   </div>
-                  <div 
-                    className="about-page-story-item"
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'row',
-                      justifyContent: 'space-between',
-                      alignItems: 'flex-start',
-                      gap: '172px',
-                      width: '100%'
-                    }}
-                  >
-                    <div style={{ minWidth: '180px' }}>
-                      <p 
-                        className="product-type"
-                        style={{
-                          fontFamily: "'Commissioner', sans-serif",
-                          fontSize: '14px',
-                          fontWeight: 450,
-                          color: '#A9A9A9',
-                          margin: 0,
-                          textTransform: 'uppercase',
-                          flexShrink: 0
-                        }}
-                      >
+                  <div className="about-page-story-item">
+                    <div className="about-page-story-label">
+                      <p className="about-page-story-date">
                         В 2014 году
                       </p>
                     </div>
-                    <div style={{ width: '100%' }}>
-                      <p
-                        style={{
-                          fontFamily: "'Commissioner', sans-serif",
-                          fontSize: '20px',
-                          fontWeight: 450,
-                          lineHeight: '1.5',
-                          color: '#363636',
-                          margin: 0
-                        }}
-                      >
+                    <div className="about-page-story-body">
+                      <p className="about-page-story-text">
                         Получили первый опыт сотрудничества в рамках Таможенного Союза, оснастив конференц-зал в Национальном центре биотехнологий в г. Астана, Казахстан.
                       </p>
                     </div>
                   </div>
-                  <div 
-                    className="about-page-story-item"
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'row',
-                      justifyContent: 'space-between',
-                      alignItems: 'flex-start',
-                      gap: '172px',
-                      width: '100%'
-                    }}
-                  >
-                    <div style={{ minWidth: '180px' }}>
-                      <p 
-                        className="product-type"
-                        style={{
-                          fontFamily: "'Commissioner', sans-serif",
-                          fontSize: '14px',
-                          fontWeight: 450,
-                          color: '#A9A9A9',
-                          margin: 0,
-                          textTransform: 'uppercase',
-                          flexShrink: 0
-                        }}
-                      >
+                  <div className="about-page-story-item">
+                    <div className="about-page-story-label">
+                      <p className="about-page-story-date">
                         С 2011 по 2015 год
                       </p>
                     </div>
-                    <div style={{ width: '100%' }}>
-                      <p
-                        style={{
-                          fontFamily: "'Commissioner', sans-serif",
-                          fontSize: '20px',
-                          fontWeight: 450,
-                          lineHeight: '1.5',
-                          color: '#363636',
-                          margin: 0
-                        }}
-                      >
+                    <div className="about-page-story-body">
+                      <p className="about-page-story-text">
                         Выпустили около 20 000 посадочных мест, или около 100 залов со средней вместимостью 200 человек.
                       </p>
                     </div>
                   </div>
-                  <div 
-                    className="about-page-story-item"
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'row',
-                      justifyContent: 'space-between',
-                      alignItems: 'flex-start',
-                      gap: '172px',
-                      width: '100%'
-                    }}
-                  >
-                    <div style={{ minWidth: '180px' }}>
-                      <p 
-                        className="product-type"
-                        style={{
-                          fontFamily: "'Commissioner', sans-serif",
-                          fontSize: '14px',
-                          fontWeight: 450,
-                          color: '#A9A9A9',
-                          margin: 0,
-                          textTransform: 'uppercase',
-                          flexShrink: 0
-                        }}
-                      >
+                  <div className="about-page-story-item">
+                    <div className="about-page-story-label">
+                      <p className="about-page-story-date">
                         В апреле 2015 года
                       </p>
                     </div>
-                    <div style={{ width: '100%' }}>
-                      <p
-                        style={{
-                          fontFamily: "'Commissioner', sans-serif",
-                          fontSize: '20px',
-                          fontWeight: 450,
-                          lineHeight: '1.5',
-                          color: '#363636',
-                          margin: 0
-                        }}
-                      >
+                    <div className="about-page-story-body">
+                      <p className="about-page-story-text">
                         Пуск новой линии в России с передовой в нашем сегменте технологией Uniblock, имеющей аналоги только в Европе, со стартовой производственной мощностью 2000 шт/месяц.
                       </p>
                     </div>
                   </div>
-                  <div 
-                    className="about-page-story-item"
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'row',
-                      justifyContent: 'space-between',
-                      alignItems: 'flex-start',
-                      gap: '172px',
-                      width: '100%'
-                    }}
-                  >
-                    <div style={{ minWidth: '180px' }}>
-                      <p 
-                        className="product-type"
-                        style={{
-                          fontFamily: "'Commissioner', sans-serif",
-                          fontSize: '14px',
-                          fontWeight: 450,
-                          color: '#A9A9A9',
-                          margin: 0,
-                          textTransform: 'uppercase',
-                          flexShrink: 0
-                        }}
-                      >
+                  <div className="about-page-story-item">
+                    <div className="about-page-story-label">
+                      <p className="about-page-story-date">
                         С 2016 года
                       </p>
                     </div>
-                    <div style={{ width: '100%' }}>
-                      <p
-                        style={{
-                          fontFamily: "'Commissioner', sans-serif",
-                          fontSize: '20px',
-                          fontWeight: 450,
-                          lineHeight: '1.5',
-                          color: '#363636',
-                          margin: 0
-                        }}
-                      >
+                    <div className="about-page-story-body">
+                      <p className="about-page-story-text">
                         Активно развиваем качество продукции, запускаем новые модели кресел:
                       </p>
-                      <ul
-                        style={{
-                          fontFamily: "'Commissioner', sans-serif",
-                          fontSize: '20px',
-                          fontWeight: 450,
-                          lineHeight: '1.5',
-                          color: '#363636',
-                          margin: '16px 0 0 0',
-                          paddingLeft: '20px',
-                          listStyleType: 'disc'
-                        }}
-                      >
-                        <li style={{ marginBottom: '8px' }}>
+                      <ul className="about-page-story-list">
+                        <li>
                           запустили линию полного цикла производства кресел от сырья до готовой продукции по технологии Uniblock
                         </li>
-                        <li style={{ marginBottom: '8px' }}>
+                        <li>
                           закупили дополнительные 4 пресс-формы к ТПА для локального производства столиков в подлокотнике, оснащенных пружинным возвратным механизмом, а так же для производства декоративных заглушек мест крепления опор к полу и внешних декоративных накладок спинки и сидения из полипропилена (пластик)
                         </li>
-                        <li style={{ marginBottom: '8px' }}>
+                        <li>
                           разработали и запустили в серию стальной механизм складного столика на спинке кресла, комплектующие вырезаются на высокоточном лазерном станке, порошковая покраска в 2 слоя традиционно для стальных комплектующих.
                         </li>
-                        <li style={{ marginBottom: '8px' }}>
+                        <li>
                           разработали и запустили в серию механизм качания спинки
                         </li>
-                        <li style={{ marginBottom: '8px' }}>
+                        <li>
                           разработали и запустили в серию механизм позволяющий устанавливать спинку кресла в полулежачем положении в нескольких углах наклона
                         </li>
-                        <li style={{ marginBottom: '8px' }}>
+                        <li>
                           разработали подголовник из ППУ с интегрированным стальным каркасом
                         </li>
-                        <li style={{ marginBottom: '8px' }}>
+                        <li>
                           увеличили столярный цех, закупили пресс для термо-вакуумного формования фанерных деталей «от сырья»
                         </li>
-                        <li style={{ marginBottom: '8px' }}>
+                        <li>
                           увеличили слесарный цех
                         </li>
                         <li>
