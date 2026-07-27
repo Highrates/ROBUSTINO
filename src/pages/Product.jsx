@@ -38,6 +38,8 @@ const Product = () => {
   const projectModalCloseTimerRef = useRef(null)
   // Проекты, привязанные к продукту через product_projects (из админки «Реализованные объекты»)
   const [productProjects, setProductProjects] = useState([])
+  const [isModelFormatMenuOpen, setIsModelFormatMenuOpen] = useState(false)
+  const modelFormatMenuRef = useRef(null)
   
   // Refs для анимаций
   const productSectionRef = useRef(null)
@@ -521,6 +523,30 @@ const Product = () => {
     const maxH = Math.max(224, leftH, rightH)
     setContentMidHeight(maxH)
   }, [currentProduct, configProductsForBlock])
+
+  // Закрытие меню форматов 3D модели по клику вне
+  useEffect(() => {
+    if (!isModelFormatMenuOpen) return
+    const handleClickOutside = (e) => {
+      if (modelFormatMenuRef.current && !modelFormatMenuRef.current.contains(e.target)) {
+        setIsModelFormatMenuOpen(false)
+      }
+    }
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') setIsModelFormatMenuOpen(false)
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    document.addEventListener('keydown', handleEscape)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('keydown', handleEscape)
+    }
+  }, [isModelFormatMenuOpen])
+
+  // Сбрасываем меню форматов при смене модели
+  useEffect(() => {
+    setIsModelFormatMenuOpen(false)
+  }, [slug])
 
   // productProjects загружаются через getProductProjects (таблица product_projects)
 
@@ -1006,16 +1032,74 @@ const Product = () => {
                     <span>Презентация кресла PDF</span>
                     <span className="product-details-link-bracket"> ]</span>
                   </a>
-                  <a
-                    href={currentProduct?.model_url || '#'}
-                    target={currentProduct?.model_url ? '_blank' : undefined}
-                    rel={currentProduct?.model_url ? 'noopener noreferrer' : undefined}
-                    className={`product-details-link${currentProduct?.model_url ? '' : ' product-details-link--disabled'}`}
-                  >
-                    <span className="product-details-link-bracket">[ </span>
-                    <span>Загрузить 3D модель</span>
-                    <span className="product-details-link-bracket"> ]</span>
-                  </a>
+
+                  {(() => {
+                    const hasGlb = Boolean(currentProduct?.model_url)
+                    const hasMax = Boolean(currentProduct?.model_max_url)
+                    const hasAnyModel = hasGlb || hasMax
+
+                    return (
+                      <div
+                        ref={modelFormatMenuRef}
+                        className={`product-model-download${hasAnyModel ? '' : ' product-model-download--disabled'}${isModelFormatMenuOpen ? ' is-open' : ''}`}
+                      >
+                        <button
+                          type="button"
+                          className="product-details-link product-model-download-trigger"
+                          disabled={!hasAnyModel}
+                          aria-expanded={isModelFormatMenuOpen}
+                          aria-haspopup="menu"
+                          onClick={() => hasAnyModel && setIsModelFormatMenuOpen((open) => !open)}
+                        >
+                          <span className="product-details-link-bracket">[ </span>
+                          <span>Загрузить 3D модель</span>
+                          <svg
+                            className="product-model-download-chevron"
+                            width="12"
+                            height="12"
+                            viewBox="0 0 12 12"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                            aria-hidden="true"
+                          >
+                            <path d="M2.5 4.5L6 8L9.5 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                          <span className="product-details-link-bracket"> ]</span>
+                        </button>
+
+                        {isModelFormatMenuOpen && hasAnyModel && (
+                          <div className="product-model-download-menu" role="menu">
+                            {hasGlb && (
+                              <a
+                                href={currentProduct.model_url}
+                                download
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="product-model-download-option"
+                                role="menuitem"
+                                onClick={() => setIsModelFormatMenuOpen(false)}
+                              >
+                                GLB
+                              </a>
+                            )}
+                            {hasMax && (
+                              <a
+                                href={currentProduct.model_max_url}
+                                download
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="product-model-download-option"
+                                role="menuitem"
+                                onClick={() => setIsModelFormatMenuOpen(false)}
+                              >
+                                MAX
+                              </a>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })()}
                 </div>
               </div>
             </div>

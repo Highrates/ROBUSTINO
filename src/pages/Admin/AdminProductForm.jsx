@@ -83,6 +83,7 @@ const AdminProductForm = () => {
     weight_kg: '',
     in_stock: '',
     model_url: null,
+    model_max_url: null, // 3D модель в формате .max
     document_url: null, // Презентация кресла PDF
     images: [],
     status: 'draft',
@@ -226,6 +227,7 @@ const AdminProductForm = () => {
         weight_kg: currentProduct.weight_kg || '',
         in_stock: currentProduct.in_stock || '',
         model_url: currentProduct.model_url || null,
+        model_max_url: currentProduct.model_max_url || null,
         document_url: currentProduct.document_url || null,
         images: currentProduct.images || [],
         status: currentProduct.status || 'draft',
@@ -332,6 +334,7 @@ const AdminProductForm = () => {
         weight_kg: formData.weight_kg ? parseFloat(formData.weight_kg) : null,
         in_stock: formData.in_stock || null,
         model_url: formData.model_url || null,
+        model_max_url: formData.model_max_url || null,
         document_url: formData.document_url || null,
         parent_product_id: formData.parent_product_id || null,
         images: formData.images || [],
@@ -1064,6 +1067,22 @@ const AdminProductForm = () => {
                 </p>
               </div>
             )}
+          </div>
+
+          {/* 3D модель в формате MAX */}
+          <div>
+            <FileUpload
+              bucket="models"
+              pathPrefix="products/models"
+              accept=".max"
+              maxSize={100 * 1024 * 1024}
+              value={formData.model_max_url}
+              onChange={(url) => setFormData({ ...formData, model_max_url: url })}
+              label="3D модель (MAX)"
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              Файл 3ds Max (.max) для скачивания на странице товара
+            </p>
           </div>
 
           {/* Кнопки действий */}

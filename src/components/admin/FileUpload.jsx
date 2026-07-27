@@ -20,12 +20,21 @@ const FileUpload = ({
   const [localError, setLocalError] = useState(null)
 
   const handleFile = async (file) => {
-    // Валидация типа файла
-    if (accept && !file.name.toLowerCase().endsWith(accept.replace('.', ''))) {
-      const errorMsg = `Неподдерживаемый тип файла. Разрешены только файлы ${accept}`
-      setLocalError(errorMsg)
-      if (onChange) onChange(null)
-      return
+    // Валидация типа файла (поддержка нескольких расширений через запятую, без учёта регистра)
+    if (accept) {
+      const allowed = accept
+        .split(',')
+        .map((ext) => ext.trim().toLowerCase().replace(/^\./, ''))
+        .filter(Boolean)
+      const fileExt = file.name.includes('.')
+        ? file.name.split('.').pop().toLowerCase()
+        : ''
+      if (!allowed.includes(fileExt)) {
+        const errorMsg = `Неподдерживаемый тип файла. Разрешены только файлы ${accept}`
+        setLocalError(errorMsg)
+        if (onChange) onChange(null)
+        return
+      }
     }
 
     // Валидация размера
