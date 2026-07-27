@@ -2402,16 +2402,12 @@ h1, h2, h3, h4, h5, h6 {
 
   .product-model-download-chevron {
     flex-shrink: 0;
-    transition: transform 0.2s ease;
-  }
-
-  .product-model-download.is-open .product-model-download-chevron {
-    transform: rotate(180deg);
   }
 
   .product-model-download-menu {
     position: absolute;
-    top: calc(100% + 8px);
+    bottom: calc(100% + 8px);
+    top: auto;
     left: 0;
     z-index: 20;
     min-width: 88px;
