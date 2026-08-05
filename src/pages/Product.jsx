@@ -516,6 +516,22 @@ const Product = () => {
     return modelConfigurations
   }, [parentProduct, modelConfigurations, products])
 
+  // Галерея: фото товара (со 2-го) + изображения из привязанных проектов
+  const galleryImages = useMemo(() => {
+    const productImgs = (currentProduct?.images || []).slice(1)
+    const projectImgs = productProjects.flatMap((project) => project?.images || [])
+    const seen = new Set()
+    const result = []
+
+    for (const url of [...productImgs, ...projectImgs]) {
+      if (!url || seen.has(url)) continue
+      seen.add(url)
+      result.push(url)
+    }
+
+    return result
+  }, [currentProduct?.images, productProjects])
+
   // Синхронизация высот левого и правого блоков product-content-mid (по максимальной высоте контента)
   useLayoutEffect(() => {
     const leftH = productContentMidLeftRef.current?.scrollHeight ?? 0
@@ -988,22 +1004,22 @@ const Product = () => {
                   </div>
                 )}
 
-                {/* Изображения продукта (начиная со второго) */}
-                {currentProduct?.images && currentProduct.images.length > 1 && (
+                {/* Галерея: фото товара + изображения из привязанных проектов */}
+                {galleryImages.length > 0 && (
                   <div className="project-imgs-wrapper product-details-gallery">
-                    {currentProduct.images.slice(1, 4).map((image, index) => {
-                      const isLastVisible = index === 2 && currentProduct.images.length > 4
-                      const remainingCount = currentProduct.images.length - 4
+                    {galleryImages.slice(0, 3).map((image, index) => {
+                      const isLastVisible = index === 2 && galleryImages.length > 3
+                      const remainingCount = galleryImages.length - 3
                       
                       return (
                         <div
-                          key={index}
+                          key={`${image}-${index}`}
                           className="project-modal-image-container"
-                          onClick={() => handleOpenImageViewer(currentProduct.images.slice(1), index)}
+                          onClick={() => handleOpenImageViewer(galleryImages, index)}
                         >
                           <img
                             src={image}
-                            alt={`${currentProduct.name} - изображение ${index + 2}`}
+                            alt={`${currentProduct?.name || 'Товар'} - изображение ${index + 1}`}
                             className="project-modal-image"
                             onError={(e) => {
                               e.target.style.display = 'none'
