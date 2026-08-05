@@ -32,6 +32,7 @@ import AdminPresentation from '@pages/Admin/AdminPresentation'
 
 // Admin Components
 import ProtectedRoute from '@components/admin/ProtectedRoute'
+import YandexMetrika from '@components/common/YandexMetrika'
 
 // Dev Pages
 import StyleGuideDemo from '@pages/StyleGuideDemo'
@@ -44,6 +45,7 @@ function App() {
         v7_relativeSplatPath: true,
       }}
     >
+      <YandexMetrika />
       <Routes>
         {/* Public Routes */}
         <Route path="/" element={<Home />} />
