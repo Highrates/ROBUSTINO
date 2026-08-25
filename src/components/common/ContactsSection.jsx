@@ -5,11 +5,6 @@ const ContactsSection = () => {
   const contactsWrapperRef = useRef(null)
   const contactsGridRef = useRef(null)
 
-  const openSiteChat = (e) => {
-    e.preventDefault()
-    window.dispatchEvent(new CustomEvent('robustino-open-site-chat'))
-  }
-
   return (
     <section id="contacts" ref={contactsSectionRef} className="section-contacts">
       <div className="padding-global">
@@ -27,9 +22,6 @@ const ContactsSection = () => {
                 <a href="tel:+78002509468" className="contacts-phone">
                   <span>8 (800) 250‒94‒68</span>
                 </a>
-                <button type="button" className="contacts-chat-cta" onClick={openSiteChat}>
-                  Написать
-                </button>
               </div>
 
               <div ref={contactsGridRef} className="contacts-grid">

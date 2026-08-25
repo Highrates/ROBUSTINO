@@ -742,33 +742,6 @@ h1, h2, h3, h4, h5, h6 {
     color: #A9A9A9;
   }
 
-  .contacts-chat-cta {
-    margin-top: 8px;
-    padding: 0;
-    border: none;
-    background: transparent;
-    cursor: pointer;
-    font-family: 'Commissioner', sans-serif;
-    font-size: 14px;
-    font-weight: 450;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: #A9A9A9;
-    text-decoration: underline;
-    text-underline-offset: 4px;
-    text-decoration-thickness: 1px;
-    transition: color 0.2s ease, opacity 0.2s ease;
-  }
-
-  .contacts-chat-cta:hover {
-    color: #363636;
-  }
-
-  .contacts-chat-cta:focus-visible {
-    outline: 1px solid #363636;
-    outline-offset: 4px;
-  }
-
   .contacts-grid {
     display: grid;
     grid-template-columns: 1fr 376px 1fr;
