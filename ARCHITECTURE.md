@@ -122,7 +122,8 @@ ROBUSTINO/
 
 **Идентичность гостя:** httpOnly cookie `robustino_chat` (UUID). Диалог в БД создаётся при **первом** сообщении или upload, не при открытии окна.  
 **Realtime:** без Socket.IO — REST + polling дельты (~3.5 с).  
-**Миграция:** `db/migrations/20260825_site_chat.sql`.
+**Миграция:** `db/migrations/20260825_site_chat.sql`.  
+**Telegram:** при новом сообщении гостя — `server/src/chat/telegramNotify.js` → Bot API `sendMessage` всем из `TELEGRAM_CHAT_ID` / `TELEGRAM_NOTIFY_USERNAME` (несколько через запятую). Ссылка: `/admin/chat?c=<conversationId>`.
 
 Публичные эндпоинты: `GET/POST /api/chat/messages`, `POST /api/chat/read`, `GET /api/chat/unread-count`, `POST /api/chat/upload`.
 Админ: `/api/chat/admin/…` (requireAuth).

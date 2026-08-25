@@ -22,8 +22,17 @@ for p in /root/robustino-api/.env ./server/.env; do
 done
 if [[ -n "$API_ENV" ]]; then
   echo "Файл: $API_ENV"
-  grep -E "^(PORT|DATABASE_URL|JWT_|ADMIN_EMAIL|MEDIA_|COOKIE_|CORS_|NODE_ENV)=" "$API_ENV" \
-    | sed -E 's/(PASSWORD|SECRET|DATABASE_URL)=.*/\1=***/' || true
+  grep -E "^(PORT|DATABASE_URL|JWT_|ADMIN_EMAIL|MEDIA_|COOKIE_|CORS_|NODE_ENV|TELEGRAM_|SITE_PUBLIC)=" "$API_ENV" \
+    | sed -E 's/(PASSWORD|SECRET|DATABASE_URL|TELEGRAM_BOT_TOKEN)=.*/\1=***/' || true
+  if grep -q '^TELEGRAM_BOT_TOKEN=.\+' "$API_ENV" 2>/dev/null; then
+    if grep -qE '^TELEGRAM_CHAT_ID=-?[0-9]+' "$API_ENV" 2>/dev/null || grep -qE '^TELEGRAM_NOTIFY_USERNAME=.+' "$API_ENV" 2>/dev/null; then
+      echo "Telegram notify: token + chat target OK"
+    else
+      echo "WARNING: TELEGRAM_BOT_TOKEN задан, но нет TELEGRAM_CHAT_ID / TELEGRAM_NOTIFY_USERNAME"
+    fi
+  else
+    echo "Telegram notify: не настроен (опционально)"
+  fi
   if grep -q '^ADMIN_PASSWORD=\$2' "$API_ENV"; then
     echo "ADMIN_PASSWORD: bcrypt OK"
   else

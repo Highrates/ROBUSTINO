@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import AdminLayout from '@components/admin/AdminLayout'
 import { ChatWindow } from '@components/chat/ChatWindow'
 import { useSiteChat } from '@/hooks/useSiteChat'
@@ -17,10 +18,11 @@ function formatWhen(iso) {
 }
 
 export default function AdminChat() {
+  const [searchParams, setSearchParams] = useSearchParams()
   const [list, setList] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [selectedId, setSelectedId] = useState(null)
+  const [selectedId, setSelectedId] = useState(() => searchParams.get('c') || null)
 
   const loadList = useCallback(async () => {
     try {
@@ -39,6 +41,21 @@ export default function AdminChat() {
     const id = setInterval(() => void loadList(), 8000)
     return () => clearInterval(id)
   }, [loadList])
+
+  useEffect(() => {
+    const fromUrl = searchParams.get('c')
+    if (fromUrl && fromUrl !== selectedId) setSelectedId(fromUrl)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- hydrate once from URL / when ?c= changes
+  }, [searchParams])
+
+  useEffect(() => {
+    const cur = searchParams.get('c')
+    if (selectedId && cur !== selectedId) {
+      setSearchParams({ c: selectedId }, { replace: true })
+    } else if (!selectedId && cur) {
+      setSearchParams({}, { replace: true })
+    }
+  }, [selectedId, searchParams, setSearchParams])
 
   const chat = useSiteChat({
     enabled: Boolean(selectedId),

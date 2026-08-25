@@ -22,6 +22,7 @@ import {
   multerErrorHandler,
   saveUploadBuffer,
 } from './storage.js'
+import { notifyStaffTelegram } from './telegramNotify.js'
 
 const router = Router()
 
@@ -67,6 +68,13 @@ router.post('/messages', async (req, res) => {
       attachments,
     })
     void cleanupOrphanChatFiles(conversation.id).catch(() => undefined)
+    notifyStaffTelegram({
+      conversationId: conversation.id,
+      visitorLabel: conversation.visitor_label,
+      body: message.body,
+      pageUrl: conversation.page_url || null,
+      attachmentCount: attachments.length,
+    })
     res.status(201).json(message)
   } catch (e) {
     fail(res, e)
