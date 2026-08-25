@@ -27,12 +27,12 @@ function mapApiMessageToUi(m, { selfRole }) {
 
   const isSelf = m.authorRole === selfRole
   const staffAvatar =
-    m.authorRole === 'STAFF' ? m.authorAvatarUrl || SITE_CHAT_STAFF_AVATAR_URL : m.authorAvatarUrl
+    m.authorRole === 'STAFF' ? m.authorAvatarUrl || SITE_CHAT_STAFF_AVATAR_URL : null
 
   return {
     id: m.id,
-    senderName: isSelf ? 'Вы' : m.authorLabel,
-    senderAvatarUrl: isSelf ? null : staffAvatar || null,
+    senderName: isSelf ? 'Вы' : m.authorLabel === 'Вы' && m.authorRole === 'GUEST' ? 'Посетитель' : m.authorLabel,
+    senderAvatarUrl: isSelf ? null : staffAvatar,
     timeLabel: formatTimeLabel(m.createdAt),
     content: m.deletedAt ? '' : m.body,
     documents,

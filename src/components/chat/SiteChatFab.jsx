@@ -96,7 +96,11 @@ export default function SiteChatFab() {
           aria-label={unread > 0 ? `Открыть чат, непрочитанных: ${unread}` : 'Открыть чат'}
         >
           <img src="/icons/chat-fab.svg" alt="" width={22} height={22} className={styles.fabIcon} />
-          {unread > 0 ? <span className={styles.badge} aria-hidden /> : null}
+          {unread > 0 ? (
+            <span className={styles.badge} aria-hidden>
+              {unread > 99 ? '99+' : unread}
+            </span>
+          ) : null}
         </button>
       ) : null}
 
@@ -104,6 +108,7 @@ export default function SiteChatFab() {
         open={open}
         onClose={() => setOpen(false)}
         title="Чат с ROBUSTINO"
+        headerPresence={{ label: 'Менеджер ROBUSTINO', status: 'Онлайн' }}
         messages={chat.chatMessages}
         onSend={chat.sendChatMessage}
         variant="portal"
@@ -119,7 +124,9 @@ export default function SiteChatFab() {
         loadingOlderHistory={chat.loadingOlderHistory}
         onLoadOlderHistory={chat.loadOlderChatMessages}
         messageEmptyHint={
-          chat.chatLoading ? 'Загрузка…' : 'Напишите нам — ответим в рабочее время'
+          chat.chatLoading
+            ? 'Загрузка…'
+            : 'Менеджер онлайн — напишите, ответим как можно скорее'
         }
         inputPlaceholder="Ваше сообщение"
         composerBanner={

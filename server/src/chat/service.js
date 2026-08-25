@@ -1,6 +1,6 @@
 import { query, withClient } from '../db.js'
 import { badRequest } from '../errors.js'
-import { SITE_CHAT_STAFF_AVATAR_URL } from '../../../shared/siteChatLimits.js'
+import { getStaffAvatarUrl } from '../settings.js'
 import { ATTACHMENTS_MAX, BODY_MAX, MEDIA_PUBLIC_BASE } from './config.js'
 
 export function guessKind(mimeType, filename) {
@@ -21,7 +21,7 @@ export function mapAttachment(row) {
   }
 }
 
-export function mapMessage(row, attachmentsByMessage) {
+export function mapMessage(row, attachmentsByMessage, staffAvatarUrl) {
   const isStaff = row.author_role === 'STAFF'
   return {
     id: row.id,
@@ -29,7 +29,7 @@ export function mapMessage(row, attachmentsByMessage) {
     authorUserId: isStaff ? 'staff' : 'guest',
     authorRole: row.author_role,
     authorLabel: isStaff ? 'ROBUSTINO' : 'Вы',
-    authorAvatarUrl: isStaff ? SITE_CHAT_STAFF_AVATAR_URL : null,
+    authorAvatarUrl: isStaff ? staffAvatarUrl : null,
     body: row.deleted_at ? '' : row.body || '',
     deletedAt: row.deleted_at ? new Date(row.deleted_at).toISOString() : null,
     createdAt: new Date(row.created_at).toISOString(),
@@ -74,10 +74,13 @@ export async function listMessages(conversationId, { limit, before, after }) {
        LIMIT $4`,
       [conversationId, anchor.created_at, anchor.id, limit]
     )
-    const attachments = await loadAttachmentsMap(rows.map((r) => r.id))
+    const [attachments, staffAvatarUrl] = await Promise.all([
+      loadAttachmentsMap(rows.map((r) => r.id)),
+      getStaffAvatarUrl(),
+    ])
     return {
       conversationId,
-      messages: rows.map((r) => mapMessage(r, attachments)),
+      messages: rows.map((r) => mapMessage(r, attachments, staffAvatarUrl)),
       hasOlder: undefined,
       delta: true,
     }
@@ -117,10 +120,13 @@ export async function listMessages(conversationId, { limit, before, after }) {
   const hasOlder = rows.length > limit
   const page = hasOlder ? rows.slice(0, limit) : rows
   page.reverse()
-  const attachments = await loadAttachmentsMap(page.map((r) => r.id))
+  const [attachments, staffAvatarUrl] = await Promise.all([
+    loadAttachmentsMap(page.map((r) => r.id)),
+    getStaffAvatarUrl(),
+  ])
   return {
     conversationId,
-    messages: page.map((r) => mapMessage(r, attachments)),
+    messages: page.map((r) => mapMessage(r, attachments, staffAvatarUrl)),
     hasOlder,
   }
 }
@@ -176,8 +182,11 @@ export async function insertMessage({ conversationId, authorRole, body, attachme
       )
       await client.query('COMMIT')
 
-      const attachmentsMap = await loadAttachmentsMap([msg.id])
-      return mapMessage(msg, attachmentsMap)
+      const [attachmentsMap, staffAvatarUrl] = await Promise.all([
+        loadAttachmentsMap([msg.id]),
+        getStaffAvatarUrl(),
+      ])
+      return mapMessage(msg, attachmentsMap, staffAvatarUrl)
     } catch (e) {
       await client.query('ROLLBACK')
       throw e

@@ -124,8 +124,9 @@ ROBUSTINO/
 **Realtime:** без Socket.IO — REST + polling дельты (~3.5 с).  
 **Миграция:** `db/migrations/20260825_site_chat.sql`.
 
-Публичные эндпоинты: `GET/POST /api/chat/messages`, `POST /api/chat/read`, `GET /api/chat/unread-count`, `POST /api/chat/upload`.  
+Публичные эндпоинты: `GET/POST /api/chat/messages`, `POST /api/chat/read`, `GET /api/chat/unread-count`, `POST /api/chat/upload`.
 Админ: `/api/chat/admin/…` (requireAuth).
+Аватар staff в чате: `site_settings.admin_avatar_url` → `GET /api/settings/chat`, `GET/PUT /api/settings/admin-avatar` (admin).
 
 ---
 

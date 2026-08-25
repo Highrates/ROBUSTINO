@@ -30,6 +30,7 @@ import AdminFAQLinks from '@pages/Admin/AdminFAQLinks'
 import AdminFAQLinkForm from '@pages/Admin/AdminFAQLinkForm'
 import AdminPresentation from '@pages/Admin/AdminPresentation'
 import AdminChat from '@pages/Admin/AdminChat'
+import AdminSettings from '@pages/Admin/AdminSettings'
 
 // Admin Components
 import ProtectedRoute from '@components/admin/ProtectedRoute'
@@ -255,6 +256,14 @@ function App() {
           element={
             <ProtectedRoute>
               <AdminChat />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/settings"
+          element={
+            <ProtectedRoute>
+              <AdminSettings />
             </ProtectedRoute>
           }
         />

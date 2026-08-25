@@ -201,6 +201,14 @@ const AdminDashboard = () => {
             <h3 className="text-gray-500 text-sm mb-2">Чат</h3>
             <p className="text-sm text-gray-600 mt-4">Ответы посетителям с сайта</p>
           </Link>
+
+          <Link
+            to="/admin/settings"
+            className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow cursor-pointer"
+          >
+            <h3 className="text-gray-500 text-sm mb-2">Настройки</h3>
+            <p className="text-sm text-gray-600 mt-4">Аватар администратора в чате</p>
+          </Link>
         </div>
       </div>
     </AdminLayout>

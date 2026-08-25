@@ -269,6 +269,16 @@ CREATE INDEX IF NOT EXISTS idx_site_chat_conversations_empty_gc
   WHERE last_message_at IS NULL;
 
 -- ---------------------------------------------------------------------------
+-- site_settings (admin avatar и пр.)
+-- ---------------------------------------------------------------------------
+CREATE TABLE public.site_settings (
+  key text NOT NULL,
+  value text NOT NULL,
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT site_settings_pkey PRIMARY KEY (key)
+);
+
+-- ---------------------------------------------------------------------------
 -- Колонки с URL файлов (Storage → /media после миграции)
 -- products: model_url, model_max_url, document_url, images[], additional_models[]
 -- articles: cover_image (+ URL внутри content HTML)

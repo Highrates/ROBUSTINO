@@ -13,6 +13,7 @@ import upholsteryRoutes from './routes/upholstery.js'
 import productProjectsRoutes from './routes/productProjects.js'
 import uploadRoutes from './routes/upload.js'
 import chatRoutes from './routes/chat.js'
+import settingsRoutes from './routes/settings.js'
 
 assertAuthConfig()
 
@@ -51,6 +52,7 @@ app.use('/api/upholstery', upholsteryRoutes)
 app.use('/api/product-projects', productProjectsRoutes)
 app.use('/api/upload', uploadRoutes)
 app.use('/api/chat', chatRoutes)
+app.use('/api/settings', settingsRoutes)
 
 app.use((err, _req, res, _next) => {
   console.error('[api]', err)

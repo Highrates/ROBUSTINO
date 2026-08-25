@@ -152,6 +152,8 @@ export function ChatWindow({
   loadOlderHistoryLabel = 'Показать раньше',
   messageDayLocale = 'ru-RU',
   titleTransform = 'uppercase',
+  /** @type {{ label: string, status: string } | null} */
+  headerPresence = null,
 }) {
   const embedded = variant === 'embedded'
   const titleId = useId()
@@ -466,14 +468,30 @@ export function ChatWindow({
       aria-labelledby={titleId}
     >
       <div className={styles.panelInner}>
-        <header className={`${styles.header} ${compactHeader ? styles.headerCompact : ''}`}>
+        <header
+          className={`${styles.header} ${compactHeader ? styles.headerCompact : ''} ${
+            headerPresence ? styles.headerWithPresence : ''
+          }`}
+        >
           <div className={styles.headerMain}>
-            <h2
-              id={titleId}
-              className={`${styles.title} ${titleTransform === 'none' ? styles.titleNormalCase : ''}`}
-            >
-              {title}
-            </h2>
+            <div className={styles.headerTitles}>
+              <h2
+                id={titleId}
+                className={`${styles.title} ${titleTransform === 'none' ? styles.titleNormalCase : ''}`}
+              >
+                {title}
+              </h2>
+              {headerPresence ? (
+                <p className={styles.presence}>
+                  <span className={styles.presenceDot} aria-hidden />
+                  <span className={styles.presenceLabel}>{headerPresence.label}</span>
+                  <span className={styles.presenceSep} aria-hidden>
+                    ·
+                  </span>
+                  <span className={styles.presenceStatus}>{headerPresence.status}</span>
+                </p>
+              ) : null}
+            </div>
             {!hideCloseButton ? (
               <button type="button" className={styles.closeBtn} onClick={onClose} aria-label="Закрыть чат">
                 <CloseIcon />
@@ -526,9 +544,7 @@ export function ChatWindow({
                         <div className={styles.senderLeft}>
                           {m.senderAvatarUrl ? (
                             <img className={styles.avatar} src={m.senderAvatarUrl} alt="" width={24} height={24} />
-                          ) : (
-                            <div className={styles.avatar} aria-hidden />
-                          )}
+                          ) : null}
                           <span className={styles.senderName}>{m.senderName}</span>
                           {m.headExtra ? (
                             <span className={styles.messageHeadExtra}>{m.headExtra}</span>

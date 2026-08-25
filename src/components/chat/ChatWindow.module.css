@@ -152,6 +152,10 @@
   box-sizing: border-box;
 }
 
+.headerWithPresence {
+  height: 72px;
+}
+
 .headerCompact {
   display: none;
 }
@@ -166,6 +170,15 @@
   padding: 0 16px;
   gap: 12px;
   box-sizing: border-box;
+}
+
+.headerTitles {
+  min-width: 0;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
 }
 
 .title {
@@ -183,6 +196,45 @@
 
 .titleNormalCase {
   text-transform: none;
+}
+
+.presence {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-family: var(--font-commissioner);
+  font-size: 12px;
+  font-weight: 450;
+  line-height: 1.2;
+  color: #a9a9a9;
+}
+
+.presenceDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #22c55e;
+  flex-shrink: 0;
+}
+
+.presenceLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.presenceSep {
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.presenceStatus {
+  flex-shrink: 0;
+  color: #22c55e;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
 }
 
 .closeBtn {
