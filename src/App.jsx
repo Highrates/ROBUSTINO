@@ -29,10 +29,12 @@ import AdminCollectionForm from '@pages/Admin/AdminCollectionForm'
 import AdminFAQLinks from '@pages/Admin/AdminFAQLinks'
 import AdminFAQLinkForm from '@pages/Admin/AdminFAQLinkForm'
 import AdminPresentation from '@pages/Admin/AdminPresentation'
+import AdminChat from '@pages/Admin/AdminChat'
 
 // Admin Components
 import ProtectedRoute from '@components/admin/ProtectedRoute'
 import YandexMetrika from '@components/common/YandexMetrika'
+import SiteChatFab from '@components/chat/SiteChatFab'
 
 // Dev Pages
 import StyleGuideDemo from '@pages/StyleGuideDemo'
@@ -46,6 +48,7 @@ function App() {
       }}
     >
       <YandexMetrika />
+      <SiteChatFab />
       <Routes>
         {/* Public Routes */}
         <Route path="/" element={<Home />} />
@@ -244,6 +247,14 @@ function App() {
           element={
             <ProtectedRoute>
               <AdminPresentation />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/chat"
+          element={
+            <ProtectedRoute>
+              <AdminChat />
             </ProtectedRoute>
           }
         />

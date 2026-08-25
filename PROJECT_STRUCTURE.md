@@ -31,9 +31,9 @@ ROBUSTINO/
 │   │   │
 │   │   └── admin/                  # Компоненты админки
 │   │       ├── AdminLayout.jsx     ✅ Layout для админ панели
-│   │       ├── FileUpload.jsx      ✅ Загрузка файлов в Supabase Storage
+│   │       ├── FileUpload.jsx      ✅ Загрузка файлов в /media
 │   │       ├── ImageUpload.jsx     ✅ Загрузка изображений
-│   │       ├── ProtectedRoute.jsx  ✅ Защита роутов админки
+│   │       ├── ProtectedRoute.jsx  ✅ Cookie-сессия админа
 │   │       └── RichTextEditor.jsx  ✅ WYSIWYG редактор (react-quill)
 │   │
 │   ├── pages/
@@ -68,7 +68,7 @@ ROBUSTINO/
 │   │
 │   ├── utils/
 │   │   ├── animations.js           ✅ GSAP анимации (готовые функции)
-│   │   └── api.js                  ✅ API методы для Supabase (с retry логикой)
+│   │   └── api.js                  ✅ HTTP API к Express (retry)
 │   │
 │   ├── store/
 │   │   ├── productsStore.js        ✅ Zustand store для продуктов
@@ -81,7 +81,7 @@ ROBUSTINO/
 │   │   └── authStore.js            ✅ Zustand store для аутентификации
 │   │
 │   ├── config/
-│   │   └── supabase.js             ✅ Конфигурация Supabase клиента
+│   │   └── buckets.js              ✅ Имена media-бакетов
 │   │
 │   ├── styles/
 │   │   └── global.css              ✅ Глобальные стили + Tailwind + кастомные классы
@@ -90,6 +90,9 @@ ROBUSTINO/
 │   │
 │   ├── App.jsx                     ✅ Главный компонент приложения (роутинг)
 │   └── main.jsx                    ✅ Entry point
+│
+├── server/                         # Express API
+├── db/                             # schema.sql, migrations, rewrite URLs
 │
 ├── public/
 │   ├── models/                     # GLB файлы 3D моделей
@@ -100,7 +103,7 @@ ROBUSTINO/
 │
 ├── Configuration Files:
 │   ├── package.json                ✅ Зависимости
-│   ├── vite.config.js              ✅ Vite конфиг с алиасами
+│   ├── vite.config.js              ✅ Vite конфиг с алиасами + proxy /api
 │   ├── tailwind.config.js          ✅ Tailwind конфиг
 │   ├── postcss.config.js           ✅ PostCSS конфиг
 │   ├── .eslintrc.cjs               ✅ ESLint конфиг
@@ -112,11 +115,10 @@ ROBUSTINO/
 │   ├── PROJECT_STRUCTURE.md        ✅ Этот файл
 │   └── STYLEGUIDE.md               ✅ Гайд по стилям
 │
-├── SQL Scripts:
-│   ├── supabase-schema.sql         ✅ Основная схема БД
-│   ├── supabase-full-schema.sql    ✅ Полная схема БД
-│   ├── FIX_STORAGE_RLS_DOCUMENTS.sql ✅ Исправление RLS для документов
-│   └── create-admin-user.sql      ✅ Создание админ пользователя
+├── SQL / DB:
+│   ├── db/schema.sql               ✅ Каноническая схема
+│   ├── db/migrations/              ✅ Additive миграции
+│   └── create-admin-user.sql       ⚠️ legacy (админ теперь через API env)
 │
 └── node_modules/                   ✅ Зависимости установлены
 
@@ -135,18 +137,18 @@ ROBUSTINO/
 - [x] Админ панель (полный CRUD для всех сущностей)
 - [x] Утилиты (animations, api с retry)
 - [x] Хуки (useGSAP, useIntersectionObserver)
-- [x] State management (8 Zustand stores)
-- [x] Supabase конфигурация
+- [x] State management (Zustand stores)
+- [x] Express API + Postgres + /media
 - [x] GSAP анимации с оптимизациями (will-change, prefers-reduced-motion)
 - [x] Модальные окна для проектов
 - [x] Full-screen image viewer
 - [x] Rich text editor для админки
 
-### Backend (Supabase)
-- [x] Таблицы: products, articles, projects, faq, faq_links, presentation, upholstery_variants
-- [x] Storage buckets: models, images, articles, projects, documents
-- [x] Row Level Security (RLS) policies
-- [x] Аутентификация для админ панели
+### Backend (свой стек)
+- [x] PostgreSQL + `db/schema.sql`
+- [x] Express API (`server/`, pm2 `robustino-api`)
+- [x] Media на диске `/var/www/html/media`
+- [x] httpOnly cookie auth (bcrypt admin)
 
 ### Оптимизации
 - [x] GPU-ускорение анимаций (will-change)
@@ -169,5 +171,5 @@ ROBUSTINO/
 
 ---
 
-**Статус:** Проект в активной разработке ✅  
-**Дата последнего обновления:** 11 января 2026
+**Статус:** Продакшен на своём Postgres + API ✅  
+**Дата последнего обновления:** 25 августа 2026

@@ -31,6 +31,9 @@ dist-ssr
 # Supabase
 .supabase
 
+# Локальный бэкап Storage / DB (не коммитить)
+backup/
+
 # Локальная инструкция деплоя (не коммитить)
 deploy-instructions.txt
 

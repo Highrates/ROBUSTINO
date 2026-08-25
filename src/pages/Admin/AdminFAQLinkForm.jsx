@@ -4,7 +4,7 @@ import AdminLayout from '@components/admin/AdminLayout'
 import useFAQLinksStore from '@store/faqLinksStore'
 import RichTextEditor from '@components/admin/RichTextEditor'
 import FileUpload from '@components/admin/FileUpload'
-import { BUCKETS } from '@/config/supabase'
+import { BUCKETS } from '@/config/buckets'
 
 const AdminFAQLinkForm = () => {
   const navigate = useNavigate()

@@ -3,7 +3,7 @@ import ReactQuill from 'react-quill'
 import 'react-quill/dist/quill.snow.css'
 import ImageCropModal from '@components/admin/ImageCropModal'
 import { uploadFile } from '@utils/api'
-import { BUCKETS } from '@/config/supabase'
+import { BUCKETS } from '@/config/buckets'
 
 const RichTextEditor = ({
   value,

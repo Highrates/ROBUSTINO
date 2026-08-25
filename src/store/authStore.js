@@ -1,5 +1,11 @@
 import { create } from 'zustand'
-import { supabase } from '@/config/supabase'
+import {
+  apiFetch,
+  setSessionActive,
+  clearClientSession,
+  setUnauthorizedHandler,
+  hasSession,
+} from '@/utils/http'
 
 const useAuthStore = create((set, get) => ({
   user: null,
@@ -8,84 +14,39 @@ const useAuthStore = create((set, get) => ({
   isLoading: true,
   error: null,
 
-  // Проверка текущей сессии
   checkSession: async () => {
     try {
-      // Проверяем, что Supabase настроен
-      if (!supabase || !supabase.auth) {
-        console.warn('Supabase not configured')
-        set({
-          user: null,
-          session: null,
-          isAuthenticated: false,
-          isLoading: false,
-          error: null,
-        })
-        return
-      }
-
       set({ isLoading: true, error: null })
-      const { data: { session }, error } = await supabase.auth.getSession()
-      
-      if (error) throw error
-
-      if (session) {
-        set({
-          user: session.user,
-          session,
-          isAuthenticated: true,
-          isLoading: false,
-        })
-      } else {
-        set({
-          user: null,
-          session: null,
-          isAuthenticated: false,
-          isLoading: false,
-        })
-      }
-    } catch (error) {
-      console.error('Error checking session:', error)
+      // skipAuthHandler: 401 on /me just means "not logged in"
+      const data = await apiFetch('/auth/me', { skipAuthHandler: true })
+      setSessionActive(true)
+      set({
+        user: data.user,
+        session: { user: data.user },
+        isAuthenticated: true,
+        isLoading: false,
+      })
+    } catch {
+      clearClientSession()
       set({
         user: null,
         session: null,
         isAuthenticated: false,
         isLoading: false,
-        error: error.message,
+        error: null,
       })
     }
   },
 
-  // Вход
   login: async (email, password) => {
     try {
-      // Проверяем, что Supabase настроен
-      if (!supabase || !supabase.auth) {
-        return { 
-          success: false, 
-          error: 'Supabase не настроен. Проверьте .env файл.' 
-        }
-      }
-
       set({ isLoading: true, error: null })
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      const data = await apiFetch('/auth/login', {
+        method: 'POST',
+        body: { email, password },
+        skipAuthHandler: true,
       })
-
-      if (error) {
-        // Более понятные сообщения об ошибках
-        let errorMessage = error.message
-        if (error.message.includes('Invalid login credentials')) {
-          errorMessage = 'Неверный email или пароль'
-        } else if (error.message.includes('Email not confirmed')) {
-          errorMessage = 'Email не подтвержден. Проверьте почту.'
-        } else if (error.message.includes('User not found')) {
-          errorMessage = 'Пользователь не найден. Создайте пользователя в Supabase Dashboard.'
-        }
-        throw new Error(errorMessage)
-      }
-
+      setSessionActive(true)
       set({
         user: data.user,
         session: data.session,
@@ -93,64 +54,48 @@ const useAuthStore = create((set, get) => ({
         isLoading: false,
         error: null,
       })
-
       return { success: true }
     } catch (error) {
-      console.error('Login error:', error)
-      set({
-        isLoading: false,
-        error: error.message,
-      })
+      clearClientSession()
+      set({ isLoading: false, error: error.message })
       return { success: false, error: error.message }
     }
   },
 
-  // Выход
   logout: async () => {
     try {
-      const { error } = await supabase.auth.signOut()
-      if (error) throw error
+      await apiFetch('/auth/logout', { method: 'POST', skipAuthHandler: true })
+    } catch {
+      /* ignore */
+    }
+    clearClientSession()
+    set({
+      user: null,
+      session: null,
+      isAuthenticated: false,
+      error: null,
+    })
+  },
 
+  init: async () => {
+    setUnauthorizedHandler(() => {
+      const { isAuthenticated } = get()
+      if (!isAuthenticated) return
+      clearClientSession()
       set({
         user: null,
         session: null,
         isAuthenticated: false,
-        error: null,
+        error: 'Сессия истекла',
       })
-    } catch (error) {
-      console.error('Logout error:', error)
-      set({ error: error.message })
-    }
-  },
-
-  // Инициализация (проверка сессии при загрузке)
-  init: async () => {
-    try {
-      // Проверяем, что Supabase настроен
-      if (!supabase || !supabase.auth) {
-        console.warn('Supabase not configured, skipping auth initialization')
-        set({ isLoading: false })
-        return
-      }
-
-      await get().checkSession()
-
-      // Слушаем изменения аутентификации
-      supabase.auth.onAuthStateChange((_event, session) => {
-        if (session) {
-          set({
-            user: session.user,
-            session,
-            isAuthenticated: true,
-          })
-        } else {
-          set({
-            user: null,
-            session: null,
-            isAuthenticated: false,
-          })
+      if (typeof window !== 'undefined' && window.location.pathname.startsWith('/admin')) {
+        if (!window.location.pathname.includes('/admin/login')) {
+          window.location.assign('/admin/login')
         }
-      })
+      }
+    })
+    try {
+      await get().checkSession()
     } catch (error) {
       console.error('Error initializing auth:', error)
       set({ isLoading: false })
@@ -158,5 +103,5 @@ const useAuthStore = create((set, get) => ({
   },
 }))
 
+export { hasSession }
 export default useAuthStore
-

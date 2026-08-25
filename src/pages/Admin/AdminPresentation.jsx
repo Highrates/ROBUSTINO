@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import AdminLayout from '@components/admin/AdminLayout'
 import usePresentationStore from '@store/presentationStore'
 import FileUpload from '@components/admin/FileUpload'
-import { BUCKETS } from '@/config/supabase'
+import { BUCKETS } from '@/config/buckets'
 
 const AdminPresentation = () => {
   const navigate = useNavigate()

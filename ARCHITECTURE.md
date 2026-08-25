@@ -8,56 +8,32 @@
 ROBUSTINO/
 ├── src/
 │   ├── components/         # React компоненты
-│   │   ├── common/        # Общие компоненты (Header, Footer, Button, Loader, ContactsSection, ErrorBoundary)
-│   │   ├── home/          # Компоненты главной страницы (Hero, AboutSection, ProductCatalog, ProjectsSection, BlogSection, FAQSection)
-│   │   ├── 3d/            # 3D компоненты (ChairModel, ModelViewer, ErrorBoundary)
-│   │   ├── product/      # Компоненты продуктов (Navbar)
-│   │   └── admin/         # Компоненты админ панели (AdminLayout, FileUpload, ImageUpload, ProtectedRoute, RichTextEditor)
+│   │   ├── common/        # Header, Footer, ContactsSection, …
+│   │   ├── chat/          # SiteChatFab, ChatWindow (сайт ↔ админ)
+│   │   ├── home/          # Hero, каталог, FAQ, …
+│   │   ├── 3d/            # ChairModel, ModelViewer
+│   │   ├── product/       # Navbar
+│   │   └── admin/         # AdminLayout, upload, ProtectedRoute, …
 │   │
-│   ├── pages/             # Страницы приложения
-│   │   ├── Home.jsx       # Главная страница
-│   │   ├── Products.jsx   # Страница всех продуктов
-│   │   ├── ProductPage.jsx # Страница одного продукта с 3D моделью
-│   │   ├── Articles.jsx   # Страница всех статей
-│   │   ├── Article.jsx   # Страница одной статьи
-│   │   ├── Projects.jsx   # Страница всех проектов
-│   │   ├── About.jsx     # О компании
-│   │   ├── Page.jsx      # Динамические страницы для FAQ ссылок
-│   │   └── Admin/         # Страницы админки (Dashboard, Products, Articles, Projects, FAQ, Upholstery, FAQLinks, Presentation)
-│   │
-│   ├── hooks/             # Custom React hooks
-│   │   ├── useGSAP.js            # GSAP анимации
-│   │   └── useIntersectionObserver.js
-│   │
-│   ├── utils/             # Утилиты
-│   │   ├── animations.js  # GSAP анимации
-│   │   └── api.js         # API методы для работы с Supabase
-│   │
-│   ├── store/             # State management (Zustand)
-│   │   ├── productsStore.js
-│   │   ├── articlesStore.js
-│   │   ├── projectsStore.js
-│   │   ├── faqStore.js
-│   │   ├── faqLinksStore.js
-│   │   ├── presentationStore.js
-│   │   ├── upholsteryStore.js
-│   │   └── authStore.js
-│   │
-│   ├── config/            # Конфигурация
-│   │   └── supabase.js    # Supabase клиент
-│   │
-│   ├── styles/            # Стили
-│   │   └── global.css     # Глобальные стили + Tailwind
-│   │
-│   ├── assets/            # Статичные файлы
-│   │
-│   ├── App.jsx            # Главный компонент приложения
-│   └── main.jsx           # Entry point
+│   ├── pages/             # Страницы + Admin/* (в т.ч. AdminChat)
+│   ├── hooks/             # useSiteChat, useChatAttachments, GSAP, …
+│   ├── utils/             # api.js, http.js, chatDaySeparator.js
+│   ├── store/             # Zustand
+│   ├── config/            # buckets.js
+│   ├── styles/            # global.css + Tailwind
+│   ├── App.jsx
+│   └── main.jsx
 │
-├── public/                # Публичные файлы (модели, изображения, иконки)
-├── ARCHITECTURE.md       # Этот файл - архитектура проекта
-├── PROJECT_STRUCTURE.md  # Структура проекта
-└── package.json          # Зависимости проекта
+├── shared/                # Общие константы FE+API (siteChatLimits.js)
+├── server/                # Express API
+│   └── src/
+│       ├── chat/          # guest/admin routes, storage, session, service
+│       └── routes/        # тонкие mount-точки (/api/chat → chat/)
+├── db/                    # schema.sql, migrations (site_chat_*)
+├── public/
+├── ARCHITECTURE.md
+├── PROJECT_STRUCTURE.md
+└── package.json
 ```
 
 ---
@@ -84,11 +60,13 @@ ROBUSTINO/
 - **Оптимизации**: `will-change` для GPU-ускорения, поддержка `prefers-reduced-motion`
 
 ### Backend & Database
-- **Supabase** - BaaS (Backend as a Service)
-  - PostgreSQL база данных
-  - Аутентификация
-  - Storage для файлов (GLB модели, изображения, документы)
-  - Row Level Security (RLS) для защиты данных
+- **PostgreSQL** (Docker на VPS, порт `127.0.0.1:5433`)
+- **Express API** (`server/`, pm2 `robustino-api`, `127.0.0.1:4000`)
+  - JWT-сессия в **httpOnly cookie** (TTL ~8ч)
+  - CRUD контента + upload в `/var/www/html/media`
+- **nginx**: `/api` → API, `/media` → файлы, `/` → SPA (`serve` / pm2 `robustino`)
+
+Канон схемы: [`db/schema.sql`](db/schema.sql). Исторический RLS Cloud: [`db/rls.supabase.sql`](db/rls.supabase.sql) (только справочно).
 
 ### State Management
 - **Zustand** - легковесный state manager
@@ -98,134 +76,71 @@ ROBUSTINO/
 
 ---
 
-## 🗄️ Структура базы данных (Supabase)
+## 🗄️ Структура базы данных
 
-### Таблицы
+**Канон:** [`db/schema.sql`](db/schema.sql).  
+Доступ: публичное чтение published/active на API; запись — только admin-сессия.
 
-#### `products` - Товары
-```sql
-id              UUID PRIMARY KEY
-name            TEXT NOT NULL
-type            TEXT
-description     TEXT
-model_url       TEXT  -- URL GLB модели из Storage
-images          TEXT[] -- Массив URL изображений
-status          TEXT DEFAULT 'draft' -- 'draft' | 'published'
-display_order   INTEGER
-delivery_time   TEXT
-volume_m3       NUMERIC
-weight_kg       NUMERIC
-in_stock        TEXT
-created_at      TIMESTAMP DEFAULT NOW()
-updated_at      TIMESTAMP DEFAULT NOW()
-```
+### Таблицы (кратко)
 
-#### `articles` - Статьи блога
-```sql
-id              UUID PRIMARY KEY
-title           TEXT NOT NULL
-subtitle        TEXT
-content         TEXT NOT NULL -- Rich text (HTML)
-cover_image     TEXT
-status          TEXT DEFAULT 'draft'
-display_order   INTEGER
-article_date    DATE
-published_at    TIMESTAMP
-created_at      TIMESTAMP DEFAULT NOW()
-updated_at      TIMESTAMP DEFAULT NOW()
-```
+| Таблица | Назначение | Связи |
+|--------|------------|--------|
+| `products` | Товары (`draft` / `published` / `link_only`) | self-FK `parent_product_id` |
+| `articles` | Блог | — |
+| `projects` | Реализованные объекты | `product_id` → products |
+| `product_projects` | M2M продукт ↔ проект (UNIQUE pair) | FK на оба |
+| `faq` | FAQ (`is_active`) | — |
+| `faq_links` | Документы / внутренние страницы FAQ | — |
+| `presentation` | PDF презентация | — |
+| `upholstery_collections` | Коллекции обивки | — |
+| `upholstery_variants` | Варианты обивки | `collection_id` → collections |
+| `site_chat_conversations` | Диалог гостя (cookie) ↔ админ | — |
+| `site_chat_messages` | Сообщения (`CUSTOMER` / `STAFF`) | → conversations |
+| `site_chat_attachments` | Вложения сообщений | → messages |
 
-#### `projects` - Реализованные объекты
-```sql
-id              UUID PRIMARY KEY
-name            TEXT NOT NULL
-description     TEXT -- Rich text (HTML)
-images          TEXT[] -- Массив URL изображений
-seats_count     INTEGER
-product_id      UUID REFERENCES products(id)
-upholstery_variant TEXT
-display_order   INTEGER
-created_at      TIMESTAMP DEFAULT NOW()
-updated_at      TIMESTAMP DEFAULT NOW()
-```
+Полные колонки, CHECK, UNIQUE и индексы — только в `db/schema.sql`.
 
-#### `faq` - Часто задаваемые вопросы
-```sql
-id              UUID PRIMARY KEY
-question        TEXT NOT NULL
-answer          TEXT NOT NULL
-display_order   INTEGER DEFAULT 0
-created_at      TIMESTAMP DEFAULT NOW()
-updated_at      TIMESTAMP DEFAULT NOW()
-```
+### Media (бывшие Storage buckets)
+Файлы на диске: `/var/www/html/media/{models,images,articles,projects,documents}/`  
+Публичный URL: `https://robustino.ru/media/...`  
+Вложения чата: `/media/documents/chat/{conversationId}/…`
 
-#### `faq_links` - Ссылки в секции FAQ
-```sql
-id              UUID PRIMARY KEY
-name            TEXT NOT NULL
-document_url    TEXT
-is_internal_page BOOLEAN DEFAULT false
-page_content    TEXT -- Rich text для внутренних страниц
-display_order   INTEGER
-created_at      TIMESTAMP DEFAULT NOW()
-updated_at      TIMESTAMP DEFAULT NOW()
-```
+---
 
-#### `presentation` - Презентация кресел PDF
-```sql
-id              UUID PRIMARY KEY
-name            TEXT NOT NULL
-document_url    TEXT
-created_at      TIMESTAMP DEFAULT NOW()
-updated_at      TIMESTAMP DEFAULT NOW()
-```
+## 💬 Site chat (гость ↔ админ)
 
-#### `upholstery_variants` - Варианты обивки
-```sql
-id              UUID PRIMARY KEY
-name            TEXT NOT NULL
-image_url       TEXT
-description     TEXT
-created_at      TIMESTAMP DEFAULT NOW()
-updated_at      TIMESTAMP DEFAULT NOW()
-```
+Назначение: посетитель пишет с сайта (sticky FAB / CTA «Написать» в `#contacts`), админ отвечает в `/admin/chat`.
 
-### Storage Buckets
-- `models` - для GLB файлов (3D модели)
-- `images` - для изображений продуктов
-- `articles` - для изображений статей
-- `projects` - для фотографий проектов
-- `documents` - для PDF документов и других файлов
+| Слой | Путь |
+|------|------|
+| UI сайт | `src/components/chat/SiteChatFab.jsx` + `ChatWindow` |
+| UI админ | `src/pages/Admin/AdminChat.jsx`, бейдж unread в `AdminLayout` |
+| Хуки | `useSiteChat` (delta-poll `?after=`), `useChatAttachments` |
+| Лимиты FE+API | `shared/siteChatLimits.js` |
+| API | `server/src/chat/` — `guestRoutes`, `adminRoutes`, `storage`, `session`, `service` |
+| Mount | `server/src/routes/chat.js` → `/api/chat` |
+
+**Идентичность гостя:** httpOnly cookie `robustino_chat` (UUID). Диалог в БД создаётся при **первом** сообщении или upload, не при открытии окна.  
+**Realtime:** без Socket.IO — REST + polling дельты (~3.5 с).  
+**Миграция:** `db/migrations/20260825_site_chat.sql`.
+
+Публичные эндпоинты: `GET/POST /api/chat/messages`, `POST /api/chat/read`, `GET /api/chat/unread-count`, `POST /api/chat/upload`.  
+Админ: `/api/chat/admin/…` (requireAuth).
 
 ---
 
 ## 🔄 Потоки данных (Data Flow)
 
-### Получение данных (Frontend → Supabase)
+### Получение данных (Frontend → API → Postgres)
 ```
-Component → Zustand Store → API Utils → Supabase → Response
-```
-
-Пример:
-```jsx
-// В компоненте
-const { products, fetchProducts } = useProductsStore()
-
-useEffect(() => {
-  fetchProducts() // Вызывается метод из store
-}, [])
-
-// Store вызывает API
-// API делает запрос к Supabase
-// Данные сохраняются в store
-// Компонент получает данные через store
+Component → Zustand Store → api.js / http.js → GET /api/... → Express → Postgres
 ```
 
-### Создание/обновление данных
+### Создание/обновление (админка)
 ```
-Admin Component → Form → Zustand Store → API Utils → Supabase
-                                      ↓
-                        Upload Files → Supabase Storage
+Admin Form → Store → POST/PATCH /api/... (cookie session)
+                 ↓
+            POST /api/upload/:bucket → /var/www/html/media/...
 ```
 
 ---
@@ -359,10 +274,11 @@ useGLTF.preload('/models/chair-1.glb')
 
 ### Flow
 1. Админ вводит email/password
-2. Supabase Auth проверяет данные
-3. Получаем JWT токен
-4. Токен хранится в localStorage через `authStore`
-5. Защищенные роуты проверяют наличие токена через `ProtectedRoute`
+2. `POST /api/auth/login` проверяет bcrypt-хеш, выдаёт JWT
+3. JWT кладётся в **httpOnly cookie** (`robustino_session`, TTL ~8ч)
+4. `authStore` хранит только `user` / `isAuthenticated` (токен JS не читает)
+5. При **401** клиент сбрасывает сессию и редиректит на `/admin/login`
+6. `ProtectedRoute` смотрит на `isAuthenticated`
 
 ### Защита роутов
 ```jsx
@@ -409,11 +325,16 @@ npm install          # Установка всех зависимостей
 
 ## 🔧 Конфигурация
 
-### Переменные окружения (.env)
+### Переменные окружения
+
+Фронт (`.env`):
 ```env
-VITE_SUPABASE_URL=your_supabase_url
-VITE_SUPABASE_ANON_KEY=your_anon_key
+VITE_API_URL=/api
 ```
+
+API (`server/.env` / `/root/robustino-api/.env`): см. `server/.env.example`
+(`DATABASE_URL`, `JWT_SECRET`, bcrypt `ADMIN_PASSWORD`, `MEDIA_*`, cookie TTL,
+опционально `CHAT_*` — лимиты upload/квоты; дефолты в `shared/siteChatLimits.js`).
 
 ### Vite Config
 - **Алиасы** настроены для удобного импорта:
@@ -424,6 +345,7 @@ VITE_SUPABASE_ANON_KEY=your_anon_key
   - `@utils` → `src/utils/`
   - `@store` → `src/store/`
   - `@assets` → `src/assets/`
+  - `@shared` → `shared/` (лимиты чата и др. FE↔API)
 
 ---
 
@@ -461,7 +383,7 @@ VITE_SUPABASE_ANON_KEY=your_anon_key
 3. **3D модели** - интерактивные GLB модели кресел с контролами
 4. **GSAP анимации** - плавные, оптимизированные анимации
 5. **Админ панель** - полный CRUD для товаров, статей, проектов, FAQ, вариантов обивки
-6. **Supabase** - готовое backend решение с RLS
+6. **Свой backend** - Postgres + Express API + `/media` на VPS
 7. **Доступность** - поддержка `prefers-reduced-motion`
 
 ---
@@ -492,4 +414,4 @@ VITE_SUPABASE_ANON_KEY=your_anon_key
 ---
 
 *Дата создания: 21 октября 2025*
-*Последнее обновление: 11 января 2026*
+*Последнее обновление: 25 августа 2026*

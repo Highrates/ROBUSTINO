@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { uploadFile, deleteFile } from '@utils/api'
-import { BUCKETS } from '@/config/supabase'
+import { BUCKETS } from '@/config/buckets'
 
 const FileUpload = ({ 
   bucket = BUCKETS.MODELS, 

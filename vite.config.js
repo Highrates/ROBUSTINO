@@ -15,11 +15,19 @@ export default defineConfig({
       '@utils': path.resolve(__dirname, './src/utils'),
       '@store': path.resolve(__dirname, './src/store'),
       '@styles': path.resolve(__dirname, './src/styles'),
+      '@shared': path.resolve(__dirname, './shared'),
     },
   },
   server: {
     port: 3000,
     open: true,
+    proxy: {
+      // Same-origin /api → local Express (httpOnly cookies work in dev)
+      '/api': {
+        target: 'http://127.0.0.1:4000',
+        changeOrigin: true,
+      },
+    },
   },
   build: {
     outDir: 'dist',

@@ -4,7 +4,7 @@ import AdminLayout from '@components/admin/AdminLayout'
 import FileUpload from '@components/admin/FileUpload'
 import ImageUpload from '@components/admin/ImageUpload'
 import useProductsStore from '@store/productsStore'
-import { getProjects, getProductProjects, setProductProjects, getProducts } from '@utils/api'
+import { getProjects, getProductProjects, setProductProjects, getProducts, updateProduct } from '@utils/api'
 
 // Генерация приватного токена для доступа по ссылке
 const generatePrivateToken = () => {
@@ -17,33 +17,14 @@ const generatePrivateToken = () => {
 // Проверка уникальности токена через API
 const checkTokenUniqueness = async (token, currentProductId = null) => {
   try {
-    const { supabase } = await import('@/config/supabase')
-    if (!supabase) return true // Если Supabase не настроен, считаем токен уникальным
-    
-    // Проверяем, существует ли товар с таким токеном
-    let query = supabase
-      .from('products')
-      .select('id')
-      .eq('private_token', token)
-      .limit(1)
-    
-    // Если редактируем существующий товар, исключаем его из проверки
-    if (currentProductId) {
-      query = query.neq('id', currentProductId)
-    }
-    
-    const { data, error } = await query
-    
-    if (error) {
-      console.warn('Ошибка проверки уникальности токена:', error)
-      return true // В случае ошибки считаем токен уникальным
-    }
-    
-    // Если данных нет, токен уникален
-    return !data || data.length === 0
+    const products = await getProducts()
+    const clash = products.find(
+      (p) => p.private_token === token && p.id !== currentProductId
+    )
+    return !clash
   } catch (error) {
     console.warn('Ошибка при проверке уникальности токена:', error)
-    return true // В случае ошибки считаем токен уникальным
+    return true
   }
 }
 
@@ -240,18 +221,14 @@ const AdminProductForm = () => {
       // Загружаем конфигурации (товары, у которых parent_product_id = текущий товар)
       const loadConfigurations = async () => {
         try {
-          const { supabase } = await import('@/config/supabase')
-          const { data, error } = await supabase
-            .from('products')
-            .select('id')
-            .eq('parent_product_id', currentProduct.id)
-          
-          if (!error && data) {
-            setFormData(prev => ({
-              ...prev,
-              configurations: data.map(p => p.id)
-            }))
-          }
+          const products = await getProducts()
+          const ids = products
+            .filter((p) => p.parent_product_id === currentProduct.id)
+            .map((p) => p.id)
+          setFormData((prev) => ({
+            ...prev,
+            configurations: ids,
+          }))
         } catch (error) {
           console.error('Ошибка загрузки конфигураций:', error)
         }
@@ -374,33 +351,19 @@ const AdminProductForm = () => {
       }
 
       // Сохраняем конфигурации (обновляем parent_product_id у выбранных товаров)
-      if (productId && formData.configurations.length > 0) {
+      if (productId) {
         try {
-          const { supabase } = await import('@/config/supabase')
-          // Сначала сбрасываем parent_product_id у всех товаров, которые были конфигурациями этого товара
-          await supabase
-            .from('products')
-            .update({ parent_product_id: null })
-            .eq('parent_product_id', productId)
-          
-          // Затем устанавливаем parent_product_id для выбранных конфигураций
-          await supabase
-            .from('products')
-            .update({ parent_product_id: productId })
-            .in('id', formData.configurations)
+          const products = await getProducts()
+          const previous = products.filter((p) => p.parent_product_id === productId).map((p) => p.id)
+          const next = formData.configurations || []
+          const toClear = previous.filter((id) => !next.includes(id))
+          const toSet = next.filter((id) => !previous.includes(id))
+          await Promise.all([
+            ...toClear.map((id) => updateProduct(id, { parent_product_id: null })),
+            ...toSet.map((id) => updateProduct(id, { parent_product_id: productId })),
+          ])
         } catch (error) {
           console.error('Ошибка сохранения конфигураций:', error)
-        }
-      } else if (productId && formData.configurations.length === 0) {
-        // Если конфигураций нет, сбрасываем все связи
-        try {
-          const { supabase } = await import('@/config/supabase')
-          await supabase
-            .from('products')
-            .update({ parent_product_id: null })
-            .eq('parent_product_id', productId)
-        } catch (error) {
-          console.error('Ошибка сброса конфигураций:', error)
         }
       }
 

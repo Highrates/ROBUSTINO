@@ -1,0 +1,26 @@
+# Локальный / VPS Postgres для миграции с Supabase
+# Запуск: docker compose -f db/docker-compose.yml up -d
+# Стоп:   docker compose -f db/docker-compose.yml down
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: robustino-postgres
+    restart: unless-stopped
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_DB: robustino
+      POSTGRES_USER: robustino
+      POSTGRES_PASSWORD: robustino_dev_change_me
+    volumes:
+      - robustino_pgdata:/var/lib/postgresql/data
+      - ./schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U robustino -d robustino"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  robustino_pgdata:
