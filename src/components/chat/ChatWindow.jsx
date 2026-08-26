@@ -376,6 +376,12 @@ export function ChatWindow({
     setDraft('')
   }, [draft, onSend, composerDisabled, allowEmptySend])
 
+  const closeLightbox = useCallback((e) => {
+    e?.stopPropagation?.()
+    e?.preventDefault?.()
+    setLightbox(null)
+  }, [])
+
   const openChatImage = useCallback((images, index) => {
     const urls = images.map((i) => i.src.trim()).filter(Boolean)
     if (urls.length === 0) return
@@ -400,16 +406,14 @@ export function ChatWindow({
             role="dialog"
             aria-modal="true"
             aria-label="Просмотр изображения"
-            onClick={() => setLightbox(null)}
+            onClick={closeLightbox}
           >
-            <button
-              type="button"
-              className={styles.lightboxClose}
-              aria-label="Закрыть"
-              onClick={() => setLightbox(null)}
-            >
-              <CloseIcon />
-            </button>
+            <img
+              className={styles.lightboxImg}
+              src={lightbox.urls[lightbox.index]}
+              alt=""
+              onClick={(e) => e.stopPropagation()}
+            />
             {lightbox.urls.length > 1 ? (
               <>
                 <button
@@ -447,12 +451,15 @@ export function ChatWindow({
                 </button>
               </>
             ) : null}
-            <img
-              className={styles.lightboxImg}
-              src={lightbox.urls[lightbox.index]}
-              alt=""
-              onClick={(e) => e.stopPropagation()}
-            />
+            <button
+              type="button"
+              className={styles.lightboxClose}
+              aria-label="Закрыть"
+              onClick={closeLightbox}
+              onPointerDown={closeLightbox}
+            >
+              <CloseIcon />
+            </button>
           </div>,
           document.body
         )

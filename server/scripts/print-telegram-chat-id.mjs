@@ -13,7 +13,8 @@ if (!token) {
   process.exit(1)
 }
 
-const res = await fetch(`https://api.telegram.org/bot${token}/getUpdates?limit=100`)
+const base = (process.env.TELEGRAM_API_BASE || 'https://api.telegram.org').replace(/\/$/, '')
+const res = await fetch(`${base}/bot${token}/getUpdates?limit=100`)
 const data = await res.json()
 if (!data.ok) {
   console.error('Telegram error:', data.description || data)

@@ -1,5 +1,5 @@
-import { query } from '../db.js'
-import { SITE_CHAT_STAFF_AVATAR_URL } from '../../../shared/siteChatLimits.js'
+import { query } from './db.js'
+import { SITE_CHAT_STAFF_AVATAR_URL } from '../../shared/siteChatLimits.js'
 
 const ADMIN_AVATAR_KEY = 'admin_avatar_url'
 

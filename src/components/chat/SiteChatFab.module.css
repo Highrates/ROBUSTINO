@@ -3,8 +3,8 @@
   right: max(20px, env(safe-area-inset-right));
   bottom: max(20px, env(safe-area-inset-bottom));
   z-index: 40;
-  width: 48px;
-  height: 48px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
   border: none;
   cursor: pointer;
@@ -12,13 +12,14 @@
   align-items: center;
   justify-content: center;
   background: #363636;
-  box-shadow: none;
-  transition: opacity 0.2s ease, transform 0.2s ease;
+  box-shadow: 0 4px 14px rgba(54, 54, 54, 0.28);
+  transition: opacity 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .fab:hover {
-  opacity: 0.88;
+  opacity: 0.92;
   transform: none;
+  box-shadow: 0 6px 18px rgba(54, 54, 54, 0.32);
 }
 
 .fab:focus-visible {
@@ -29,8 +30,8 @@
 .fabIcon {
   display: block;
   filter: brightness(0) invert(1);
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
 }
 
 .badge {

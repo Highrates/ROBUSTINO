@@ -12,6 +12,10 @@
 
 const DEBOUNCE_MS = Number(process.env.TELEGRAM_DEBOUNCE_MS || 45_000)
 const SITE_PUBLIC_URL = (process.env.SITE_PUBLIC_URL || 'https://robustino.ru').replace(/\/$/, '')
+/** Override when VPS cannot reach api.telegram.org (firewall). Example: your Cloudflare Worker relay. */
+const TELEGRAM_API_BASE = (
+  process.env.TELEGRAM_API_BASE || 'https://api.telegram.org'
+).replace(/\/$/, '')
 
 /** @type {Map<string, { at: number, skipped: number, last: object, timer: ReturnType<typeof setTimeout> | null }>} */
 const debounceByConv = new Map()
@@ -41,7 +45,7 @@ function parseUsernames() {
 
 function apiUrl(method) {
   const token = process.env.TELEGRAM_BOT_TOKEN.trim()
-  return `https://api.telegram.org/bot${token}/${method}`
+  return `${TELEGRAM_API_BASE}/bot${token}/${method}`
 }
 
 async function tgPost(method, body) {
