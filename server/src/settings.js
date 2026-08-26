@@ -5,9 +5,23 @@ const ADMIN_AVATAR_KEY = 'admin_avatar_url'
 
 let cache = { url: null, at: 0 }
 const CACHE_MS = 30_000
+let tableReady = false
 
 export function invalidateStaffAvatarCache() {
   cache = { url: null, at: 0 }
+}
+
+async function ensureSiteSettingsTable() {
+  if (tableReady) return
+  await query(`
+    CREATE TABLE IF NOT EXISTS public.site_settings (
+      key text NOT NULL,
+      value text NOT NULL,
+      updated_at timestamp with time zone DEFAULT now(),
+      CONSTRAINT site_settings_pkey PRIMARY KEY (key)
+    )
+  `)
+  tableReady = true
 }
 
 /** Custom admin avatar or default logo. */
@@ -16,6 +30,7 @@ export async function getStaffAvatarUrl() {
     return cache.url || SITE_CHAT_STAFF_AVATAR_URL
   }
   try {
+    await ensureSiteSettingsTable()
     const { rows } = await query(`SELECT value FROM site_settings WHERE key = $1`, [
       ADMIN_AVATAR_KEY,
     ])
@@ -27,11 +42,13 @@ export async function getStaffAvatarUrl() {
 }
 
 export async function getAdminAvatarUrlRaw() {
+  await ensureSiteSettingsTable()
   const { rows } = await query(`SELECT value FROM site_settings WHERE key = $1`, [ADMIN_AVATAR_KEY])
   return rows[0]?.value?.trim() || null
 }
 
 export async function setAdminAvatarUrl(url) {
+  await ensureSiteSettingsTable()
   const value = String(url || '').trim()
   if (!value) {
     await query(`DELETE FROM site_settings WHERE key = $1`, [ADMIN_AVATAR_KEY])

@@ -36,7 +36,7 @@ const AdminSettings = () => {
     try {
       const data = await apiFetch('/settings/admin-avatar', {
         method: 'PUT',
-        body: JSON.stringify({ avatarUrl: nextUrl }),
+        body: { avatarUrl: nextUrl },
       })
       setAvatarUrl(data?.avatarUrl || null)
       setSavedHint('Сохранено. Аватар появится в чате у посетителей.')
