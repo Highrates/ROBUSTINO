@@ -58,7 +58,8 @@ export async function apiFetch(path, { method = 'GET', body, headers = {}, formD
     opts.body = formData
   } else if (body !== undefined) {
     opts.headers['Content-Type'] = 'application/json'
-    opts.body = JSON.stringify(body)
+    // Avoid double-encoding if caller already passed a JSON string
+    opts.body = typeof body === 'string' ? body : JSON.stringify(body)
   }
 
   const res = await fetch(`${API_BASE}${path}`, opts)

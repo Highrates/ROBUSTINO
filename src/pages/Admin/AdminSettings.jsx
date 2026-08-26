@@ -92,7 +92,7 @@ const AdminSettings = () => {
               label="Аватар для чата"
               maxFiles={1}
               maxSize={2 * 1024 * 1024}
-              pathPrefix="images/admin-avatar"
+              pathPrefix="admin-avatar"
             />
 
             {avatarUrl ? (

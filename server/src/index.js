@@ -35,7 +35,28 @@ app.use(
     credentials: true,
   })
 )
-app.use(express.json({ limit: '10mb' }))
+app.use(
+  express.json({
+    limit: '10mb',
+    // Allow top-level JSON string (accidental double-stringify from clients)
+    strict: false,
+  })
+)
+
+// If body was a JSON string, parse once more into an object
+app.use((req, _res, next) => {
+  if (typeof req.body === 'string') {
+    const trimmed = req.body.trim()
+    if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+      try {
+        req.body = JSON.parse(trimmed)
+      } catch {
+        /* leave as string — route may handle */
+      }
+    }
+  }
+  next()
+})
 
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true, service: 'robustino-api' })
@@ -55,6 +76,11 @@ app.use('/api/chat', chatRoutes)
 app.use('/api/settings', settingsRoutes)
 
 app.use((err, _req, res, _next) => {
+  // express.json parse failures
+  if (err instanceof SyntaxError && 'body' in err) {
+    console.error('[api] bad json body', err.message)
+    return res.status(400).json({ error: 'Некорректный JSON в теле запроса' })
+  }
   console.error('[api]', err)
   const status = Number(err?.status) || 500
   if (status >= 500) {

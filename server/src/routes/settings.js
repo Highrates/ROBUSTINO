@@ -31,7 +31,16 @@ router.get('/admin-avatar', requireAuth, async (_req, res) => {
 
 router.put('/admin-avatar', requireAuth, async (req, res) => {
   try {
-    const raw = req.body?.avatarUrl
+    let payload = req.body
+    // Tolerate accidental double-JSON from older clients
+    if (typeof payload === 'string') {
+      try {
+        payload = JSON.parse(payload)
+      } catch {
+        throw badRequest('Некорректное тело запроса')
+      }
+    }
+    const raw = payload?.avatarUrl
     if (raw == null || raw === '') {
       await setAdminAvatarUrl(null)
       return res.json({ avatarUrl: null })
