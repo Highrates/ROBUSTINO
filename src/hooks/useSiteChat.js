@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { apiFetch } from '@/utils/http'
+import { trackChatMessage } from '@/utils/yandexMetrika'
 import { useChatAttachments } from '@/hooks/useChatAttachments'
 import {
   SITE_CHAT_ADMIN_UPLOAD_MAX_BYTES,
@@ -232,6 +233,9 @@ export function useSiteChat({ enabled, variant, conversationId = null, visitorLa
         setMessages((prev) => (prev.some((m) => m.id === ui.id) ? prev : [...prev, ui]))
         if (created.conversationId) setConversationIdState(created.conversationId)
         attachments.clearPendingAttachments()
+        if (!isAdmin) {
+          trackChatMessage({ hasText: Boolean(body), hasAttachments: ready.length > 0 })
+        }
         await markRead()
       } catch (e) {
         setError(e.message || 'Не удалось отправить')

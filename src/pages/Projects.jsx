@@ -5,6 +5,7 @@ import Navbar from '@components/product/Navbar'
 import Footer from '@components/common/Footer'
 import ContactsSection from '@components/common/ContactsSection'
 import useProjectsStore from '@store/projectsStore'
+import { trackObjectView } from '@/utils/yandexMetrika'
 import Loader from '@components/common/Loader'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
@@ -49,6 +50,7 @@ const Projects = () => {
 
   // Открытие модального окна
   const handleOpenModal = (project) => {
+    trackObjectView(project)
     setSelectedProject(project)
     setIsModalClosing(false)
     setIsModalOpen(true)

@@ -11,6 +11,7 @@ import useUpholsteryStore from '@store/upholsteryStore'
 import useProjectsStore from '@store/projectsStore'
 import { getProductProjects } from '@utils/api'
 import { getCatalogProducts, getNextCatalogProduct, getProductPath } from '@utils/catalogProducts'
+import { trackObjectView, trackProductView } from '@/utils/yandexMetrika'
 import Loader from '@components/common/Loader'
 
 // Register ScrollTrigger plugin
@@ -63,10 +64,12 @@ const Product = () => {
   const scrollTriggersRef = useRef([])
   const detailsAnimationsRef = useRef([])
   const detailsScrollTriggersRef = useRef([])
+  const trackedProductIdRef = useRef(null)
 
   // Скроллим вверх при смене модели
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+    trackedProductIdRef.current = null
   }, [slug])
 
   // Загружаем все продукты для навигации по каталогу
@@ -129,6 +132,13 @@ const Product = () => {
     // Убираем currentProduct?.slug из зависимостей, чтобы избежать бесконечного цикла
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug, fetchProductBySlug])
+
+  useEffect(() => {
+    if (!currentProduct?.id || currentProduct.slug !== slug) return
+    if (trackedProductIdRef.current === currentProduct.id) return
+    trackedProductIdRef.current = currentProduct.id
+    trackProductView(currentProduct)
+  }, [currentProduct, slug])
 
   // Сбрасываем автоповорот при смене модели (при изменении slug)
   useEffect(() => {
@@ -592,6 +602,7 @@ const Product = () => {
 
   // Открытие модального окна проекта
   const handleOpenProjectModal = (project) => {
+    trackObjectView(project)
     setSelectedProject(project)
     setIsProjectModalClosing(false)
     setIsProjectModalOpen(true)

@@ -388,6 +388,16 @@ API (`server/.env` / `/root/robustino-api/.env`): см. `server/.env.example`
 6. **Свой backend** - Postgres + Express API + `/media` на VPS
 7. **Доступность** - поддержка `prefers-reduced-motion`
 
+### Яндекс.Метрика (счётчик `111093439`)
+
+SPA-хиты: `src/components/common/YandexMetrika.jsx`. Цели (`reachGoal`): `src/utils/yandexMetrika.js` — создайте в интерфейсе Метрики **JavaScript-цели** с теми же идентификаторами:
+
+| Идентификатор | Событие |
+|---|---|
+| `chat_message` | Гость отправил сообщение в чат сайта |
+| `product_view` | Открыта страница товара `/product/:slug` |
+| `object_view` | Открыт модальный просмотр реализованного объекта (главная, `/projects`, карточка товара) |
+
 ---
 
 ## 📖 Роутинг

@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 
-const METRIKA_ID = 111093439
+import { METRIKA_ID } from '@/utils/yandexMetrika'
 
 /**
  * Отправляет hit в Яндекс.Метрику при клиентских переходах SPA.

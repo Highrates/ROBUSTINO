@@ -985,3 +985,75 @@ a.docChip:hover {
 .lightboxNavNext:hover {
   background: rgba(255, 255, 255, 0.22);
 }
+
+/* Мобильный режим: полноэкранная панель поверх навбара, slide-up, safe-area */
+@media (max-width: 640px) {
+  .root {
+    inset: 0;
+    right: auto;
+    bottom: auto;
+    z-index: 100001;
+  }
+
+  .panel {
+    position: fixed;
+    inset: 0;
+    width: 100% !important;
+    height: 100% !important;
+    height: 100dvh !important;
+    max-height: none !important;
+    border-radius: 0;
+    box-shadow: none;
+    outline: none;
+    transform: translate3d(0, 100%, 0);
+  }
+
+  .panel::before {
+    display: none;
+  }
+
+  .header,
+  .headerWithPresence {
+    height: auto;
+    min-height: 60px;
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+
+  .headerWithPresence {
+    min-height: 72px;
+  }
+
+  .messagesScroll {
+    -webkit-overflow-scrolling: touch;
+    padding-left: max(16px, env(safe-area-inset-left));
+    padding-right: max(16px, env(safe-area-inset-right));
+  }
+
+  .footerMain {
+    padding-left: max(16px, env(safe-area-inset-left));
+    padding-right: max(12px, env(safe-area-inset-right));
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
+  }
+
+  .composerBanner,
+  .footerPendingHint,
+  .chatErrorBanner {
+    padding-left: max(16px, env(safe-area-inset-left));
+    padding-right: max(16px, env(safe-area-inset-right));
+  }
+
+  .closeBtn {
+    width: 44px;
+    height: 44px;
+  }
+
+  .sendBtn,
+  .attachBtn {
+    width: 44px;
+    height: 44px;
+  }
+
+  .lightboxImg {
+    max-height: calc(100dvh - 96px);
+  }
+}

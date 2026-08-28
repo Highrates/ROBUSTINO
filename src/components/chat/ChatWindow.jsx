@@ -295,6 +295,41 @@ export function ChatWindow({
   }, [open, embedded])
 
   useEffect(() => {
+    if (!open || embedded) return undefined
+
+    const mq = window.matchMedia('(max-width: 640px)')
+    const panel = panelRef.current
+    const vv = window.visualViewport
+    if (!panel || !vv || !mq.matches) return undefined
+
+    const syncViewport = () => {
+      if (!mq.matches) {
+        panel.style.removeProperty('height')
+        panel.style.removeProperty('top')
+        panel.style.removeProperty('bottom')
+        return
+      }
+      panel.style.height = `${vv.height}px`
+      panel.style.top = `${vv.offsetTop}px`
+      panel.style.bottom = 'auto'
+    }
+
+    syncViewport()
+    vv.addEventListener('resize', syncViewport)
+    vv.addEventListener('scroll', syncViewport)
+    mq.addEventListener('change', syncViewport)
+
+    return () => {
+      vv.removeEventListener('resize', syncViewport)
+      vv.removeEventListener('scroll', syncViewport)
+      mq.removeEventListener('change', syncViewport)
+      panel.style.removeProperty('height')
+      panel.style.removeProperty('top')
+      panel.style.removeProperty('bottom')
+    }
+  }, [open, embedded])
+
+  useEffect(() => {
     if (!open || embedded) return
 
     const prevOverflow = document.body.style.overflow

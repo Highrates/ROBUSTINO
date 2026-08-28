@@ -14,6 +14,7 @@ import useArticlesStore from '@store/articlesStore'
 import useFAQStore from '@store/faqStore'
 import useFAQLinksStore from '@store/faqLinksStore'
 import usePresentationStore from '@store/presentationStore'
+import { trackObjectView } from '@/utils/yandexMetrika'
 
 // Register ScrollTrigger plugin
 gsap.registerPlugin(ScrollTrigger)
@@ -83,6 +84,7 @@ const Home = () => {
 
   // Открытие модального окна
   const handleOpenModal = (project) => {
+    trackObjectView(project)
     setSelectedProject(project)
     setIsModalClosing(false)
     setIsModalOpen(true)
