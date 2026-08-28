@@ -17,12 +17,31 @@ function formatWhen(iso) {
   })
 }
 
+function useMaxWidth(maxPx) {
+  const query = `(max-width: ${maxPx}px)`
+  const [matches, setMatches] = useState(() =>
+    typeof window !== 'undefined' ? window.matchMedia(query).matches : false
+  )
+
+  useEffect(() => {
+    const mq = window.matchMedia(query)
+    const sync = () => setMatches(mq.matches)
+    sync()
+    mq.addEventListener('change', sync)
+    return () => mq.removeEventListener('change', sync)
+  }, [query])
+
+  return matches
+}
+
 export default function AdminChat() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [list, setList] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [selectedId, setSelectedId] = useState(() => searchParams.get('c') || null)
+  const isMobile = useMaxWidth(1023)
+  const showMobileOverlay = isMobile && Boolean(selectedId)
 
   const loadList = useCallback(async () => {
     try {
@@ -68,9 +87,36 @@ export default function AdminChat() {
     void loadList()
   }, [selectedId, chat.chatMessages.length, loadList])
 
+  const selectedConversation = list.find((c) => c.id === selectedId)
+
+  const closeConversation = useCallback(() => setSelectedId(null), [])
+
+  const chatWindowProps = {
+    open: true,
+    onClose: closeConversation,
+    title: selectedConversation?.visitorLabel || 'Переписка',
+    messages: chat.chatMessages,
+    onSend: chat.sendChatMessage,
+    errorText: chat.chatError,
+    composerDisabled: chat.chatSending,
+    attachmentsEnabled: true,
+    pendingOutgoing: chat.pendingOutgoing,
+    pendingAttachmentsHint: chat.pendingAttachmentsHint,
+    allowEmptySend: chat.canSendAttachmentMessage,
+    onAttachFiles: chat.attachChatFiles,
+    onRemovePendingAttachment: chat.removePendingChatAttachment,
+    hasOlderHistory: chat.hasOlderHistory,
+    loadingOlderHistory: chat.loadingOlderHistory,
+    onLoadOlderHistory: chat.loadOlderChatMessages,
+    messageEmptyHint: chat.chatLoading ? 'Загрузка…' : 'Нет сообщений',
+    titleTransform: 'none',
+    hideCloseButton: false,
+    closeAriaLabel: isMobile ? 'Назад к списку диалогов' : 'Закрыть переписку',
+  }
+
   return (
     <AdminLayout>
-      <div className="mb-6">
+      <div className={`mb-6 ${showMobileOverlay ? 'hidden lg:block' : ''}`}>
         <h1 className="text-2xl font-bold text-gray-900">Чат с сайтом</h1>
         <p className="text-sm text-gray-500 mt-1">
           Сообщения посетителей с плавающей кнопки на сайте
@@ -78,13 +124,21 @@ export default function AdminChat() {
       </div>
 
       {error ? (
-        <p className="mb-4 text-sm text-red-600" role="alert">
+        <p className={`mb-4 text-sm text-red-600 ${showMobileOverlay ? 'hidden lg:block' : ''}`} role="alert">
           {error}
         </p>
       ) : null}
 
-      <div className="grid grid-cols-1 lg:grid-cols-[320px_minmax(0,1fr)] gap-4 min-h-[70vh]">
-        <aside className="bg-white border border-gray-200 rounded-lg overflow-hidden flex flex-col max-h-[70vh]">
+      <div
+        className={`grid grid-cols-1 lg:grid-cols-[320px_minmax(0,1fr)] gap-4 ${
+          showMobileOverlay ? '' : 'min-h-[70vh]'
+        }`}
+      >
+        <aside
+          className={`bg-white border border-gray-200 rounded-lg overflow-hidden flex-col max-h-[70vh] ${
+            showMobileOverlay ? 'hidden lg:flex' : 'flex'
+          }`}
+        >
           <div className="px-4 py-3 border-b border-gray-100 text-sm font-medium text-gray-700">
             Диалоги
           </div>
@@ -146,31 +200,9 @@ export default function AdminChat() {
           </div>
         </aside>
 
-        <section className="bg-white border border-gray-200 rounded-lg min-h-[520px] h-[70vh] overflow-hidden relative">
+        <section className="hidden lg:block bg-white border border-gray-200 rounded-lg min-h-[520px] h-[70vh] overflow-hidden relative">
           {selectedId ? (
-            <ChatWindow
-              open
-              onClose={() => setSelectedId(null)}
-              title="Переписка"
-              messages={chat.chatMessages}
-              onSend={chat.sendChatMessage}
-              variant="embedded"
-              embeddedLayout="fill"
-              hideCloseButton
-              errorText={chat.chatError}
-              composerDisabled={chat.chatSending}
-              attachmentsEnabled
-              pendingOutgoing={chat.pendingOutgoing}
-              pendingAttachmentsHint={chat.pendingAttachmentsHint}
-              allowEmptySend={chat.canSendAttachmentMessage}
-              onAttachFiles={chat.attachChatFiles}
-              onRemovePendingAttachment={chat.removePendingChatAttachment}
-              hasOlderHistory={chat.hasOlderHistory}
-              loadingOlderHistory={chat.loadingOlderHistory}
-              onLoadOlderHistory={chat.loadOlderChatMessages}
-              messageEmptyHint={chat.chatLoading ? 'Загрузка…' : 'Нет сообщений'}
-              titleTransform="none"
-            />
+            <ChatWindow {...chatWindowProps} variant="embedded" embeddedLayout="fill" />
           ) : (
             <div className="h-full flex items-center justify-center text-sm text-gray-500">
               Выберите диалог слева
@@ -178,6 +210,10 @@ export default function AdminChat() {
           )}
         </section>
       </div>
+
+      {showMobileOverlay ? (
+        <ChatWindow {...chatWindowProps} variant="portal" overlayFullscreen />
+      ) : null}
     </AdminLayout>
   )
 }

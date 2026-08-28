@@ -65,6 +65,7 @@
 }
 
 .root.rootVisible > .panel,
+.rootOverlayFullscreen.rootVisible > .panel,
 .embedOverlayAnchor.embedOverlayAnchorVisible > .panel,
 .embedShell.embedShellVisible > .panel {
   transform: translate3d(0, 0, 0);
@@ -1014,13 +1015,23 @@ a.docChip:hover {
 
   .header,
   .headerWithPresence {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    flex-shrink: 0;
     height: auto;
     min-height: 60px;
     padding-top: env(safe-area-inset-top, 0px);
+    background: #f1f2f0;
   }
 
   .headerWithPresence {
     min-height: 72px;
+  }
+
+  .headerMain {
+    position: relative;
+    z-index: 1;
   }
 
   .messagesScroll {
@@ -1043,8 +1054,12 @@ a.docChip:hover {
   }
 
   .closeBtn {
+    position: relative;
+    z-index: 2;
     width: 44px;
     height: 44px;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
   }
 
   .sendBtn,
@@ -1056,4 +1071,84 @@ a.docChip:hover {
   .lightboxImg {
     max-height: calc(100dvh - 96px);
   }
+}
+
+/* Админка на планшете: тот же полноэкранный overlay, что и FAB на телефоне */
+.rootOverlayFullscreen {
+  inset: 0;
+  right: auto;
+  bottom: auto;
+  z-index: 100001;
+}
+
+.rootOverlayFullscreen > .panel {
+  position: fixed;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+  height: 100dvh !important;
+  max-height: none !important;
+  border-radius: 0;
+  box-shadow: none;
+  outline: none;
+  transform: translate3d(0, 100%, 0);
+}
+
+.rootOverlayFullscreen > .panel::before {
+  display: none;
+}
+
+.rootOverlayFullscreen .header,
+.rootOverlayFullscreen .headerWithPresence {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  flex-shrink: 0;
+  height: auto;
+  min-height: 60px;
+  padding-top: env(safe-area-inset-top, 0px);
+  background: #f1f2f0;
+}
+
+.rootOverlayFullscreen .headerWithPresence {
+  min-height: 72px;
+}
+
+.rootOverlayFullscreen .headerMain {
+  position: relative;
+  z-index: 1;
+}
+
+.rootOverlayFullscreen .messagesScroll {
+  -webkit-overflow-scrolling: touch;
+  padding-left: max(16px, env(safe-area-inset-left));
+  padding-right: max(16px, env(safe-area-inset-right));
+}
+
+.rootOverlayFullscreen .footerMain {
+  padding-left: max(16px, env(safe-area-inset-left));
+  padding-right: max(12px, env(safe-area-inset-right));
+  padding-bottom: max(8px, env(safe-area-inset-bottom));
+}
+
+.rootOverlayFullscreen .composerBanner,
+.rootOverlayFullscreen .footerPendingHint,
+.rootOverlayFullscreen .chatErrorBanner {
+  padding-left: max(16px, env(safe-area-inset-left));
+  padding-right: max(16px, env(safe-area-inset-right));
+}
+
+.rootOverlayFullscreen .closeBtn {
+  position: relative;
+  z-index: 2;
+  width: 44px;
+  height: 44px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.rootOverlayFullscreen .sendBtn,
+.rootOverlayFullscreen .attachBtn {
+  width: 44px;
+  height: 44px;
 }

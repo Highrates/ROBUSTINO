@@ -133,7 +133,9 @@ export function ChatWindow({
   onSend,
   variant = 'portal',
   embeddedLayout = 'fill',
+  overlayFullscreen = false,
   hideCloseButton = false,
+  closeAriaLabel = 'Закрыть чат',
   messageEmptyHint = 'Пока нет сообщений',
   inputPlaceholder = 'Сообщение',
   errorText = null,
@@ -297,13 +299,22 @@ export function ChatWindow({
   useEffect(() => {
     if (!open || embedded) return undefined
 
-    const mq = window.matchMedia('(max-width: 640px)')
+    const mq = window.matchMedia(
+      overlayFullscreen ? '(max-width: 1023px)' : '(max-width: 640px)'
+    )
     const panel = panelRef.current
     const vv = window.visualViewport
     if (!panel || !vv || !mq.matches) return undefined
 
     const syncViewport = () => {
       if (!mq.matches) {
+        panel.style.removeProperty('height')
+        panel.style.removeProperty('top')
+        panel.style.removeProperty('bottom')
+        return
+      }
+      const keyboardLikelyOpen = vv.height < window.innerHeight * 0.82
+      if (!keyboardLikelyOpen) {
         panel.style.removeProperty('height')
         panel.style.removeProperty('top')
         panel.style.removeProperty('bottom')
@@ -327,7 +338,7 @@ export function ChatWindow({
       panel.style.removeProperty('top')
       panel.style.removeProperty('bottom')
     }
-  }, [open, embedded])
+  }, [open, embedded, overlayFullscreen])
 
   useEffect(() => {
     if (!open || embedded) return
@@ -535,7 +546,15 @@ export function ChatWindow({
               ) : null}
             </div>
             {!hideCloseButton ? (
-              <button type="button" className={styles.closeBtn} onClick={onClose} aria-label="Закрыть чат">
+              <button
+                type="button"
+                className={styles.closeBtn}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onClose()
+                }}
+                aria-label={closeAriaLabel}
+              >
                 <CloseIcon />
               </button>
             ) : null}
@@ -780,7 +799,13 @@ export function ChatWindow({
   return (
     <>
       {createPortal(
-        <div className={`${styles.root} ${blendReady ? styles.rootVisible : ''}`}>{panelSection}</div>,
+        <div
+          className={`${styles.root} ${overlayFullscreen ? styles.rootOverlayFullscreen : ''} ${
+            blendReady ? styles.rootVisible : ''
+          }`}
+        >
+          {panelSection}
+        </div>,
         document.body
       )}
       {lightboxNode}
