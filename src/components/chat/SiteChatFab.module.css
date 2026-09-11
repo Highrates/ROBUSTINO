@@ -88,7 +88,13 @@
   padding: 8px 10px;
   font-size: 14px;
   font-family: inherit;
+  color: #1d1c1b;
   background: #ffffff;
+  caret-color: #1d1c1b;
+}
+
+.nameInput::placeholder {
+  color: #a9a9a9;
 }
 
 .nameInput:focus {

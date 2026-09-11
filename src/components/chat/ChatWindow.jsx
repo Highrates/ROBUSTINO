@@ -163,6 +163,10 @@ export function ChatWindow({
   const textareaRef = useRef(null)
   const messagesScrollRef = useRef(null)
   const panelRef = useRef(null)
+  const onCloseRef = useRef(onClose)
+  const lightboxRef = useRef(lightbox)
+  onCloseRef.current = onClose
+  lightboxRef.current = lightbox
   const [draft, setDraft] = useState('')
   const [blendReady, setBlendReady] = useState(embedded)
   const [lightbox, setLightbox] = useState(null)
@@ -361,12 +365,12 @@ export function ChatWindow({
 
     const onKey = (e) => {
       if (e.key === 'Escape') {
-        if (lightbox) {
+        if (lightboxRef.current) {
           e.preventDefault()
           setLightbox(null)
           return
         }
-        onClose()
+        onCloseRef.current?.()
         return
       }
       if (e.key !== 'Tab' || !root) return
@@ -384,9 +388,17 @@ export function ChatWindow({
     }
 
     document.addEventListener('keydown', onKey)
+
+    // Focus once on open: name field first (if present), else message textarea.
+    // Do not re-run when parent re-renders (unstable onClose) — that steals focus mid-typing.
     const t = window.setTimeout(() => {
-      const list = focusables()
-      const preferred = textareaRef.current || list[0]
+      if (!root) return
+      const active = document.activeElement
+      if (active instanceof HTMLElement && root.contains(active)) return
+      const nameInput = root.querySelector(
+        'input:not([type="file"]):not([type="hidden"]):not([disabled])'
+      )
+      const preferred = nameInput || textareaRef.current || focusables()[0]
       preferred?.focus?.()
     }, 30)
 
@@ -396,7 +408,8 @@ export function ChatWindow({
       document.removeEventListener('keydown', onKey)
       window.clearTimeout(t)
     }
-  }, [open, onClose, embedded, lightbox])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only when open/embedded; onClose/lightbox read from render
+  }, [open, embedded])
 
   useEffect(() => {
     if (open) setDraft('')

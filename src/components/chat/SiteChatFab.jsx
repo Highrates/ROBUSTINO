@@ -82,6 +82,8 @@ export default function SiteChatFab() {
     }
   }
 
+  const closeChat = useCallback(() => setOpen(false), [])
+
   if (isAdminPath) return null
 
   const nameOk = visitorName.trim().length >= SITE_CHAT_VISITOR_LABEL_MIN
@@ -107,7 +109,7 @@ export default function SiteChatFab() {
 
       <ChatWindow
         open={open}
-        onClose={() => setOpen(false)}
+        onClose={closeChat}
         title="Чат с ROBUSTINO"
         headerPresence={{ label: 'Менеджер ROBUSTINO', status: 'Онлайн' }}
         messages={chat.chatMessages}
