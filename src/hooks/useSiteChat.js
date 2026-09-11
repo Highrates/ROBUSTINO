@@ -4,11 +4,15 @@ import { trackChatMessage } from '@/utils/yandexMetrika'
 import { useChatAttachments } from '@/hooks/useChatAttachments'
 import {
   SITE_CHAT_ADMIN_UPLOAD_MAX_BYTES,
+  SITE_CHAT_GUEST_BODY_MIN_CHARS,
   SITE_CHAT_GUEST_UPLOAD_MAX_BYTES,
   SITE_CHAT_MESSAGES_PAGE_DEFAULT,
   SITE_CHAT_POLL_MS,
   SITE_CHAT_STAFF_AVATAR_URL,
   formatUploadMaxLabel,
+  guestBodyTooShort,
+  guestVisitorLabelTooShort,
+  isLikelyGuestChatSpam,
 } from '@shared/siteChatLimits.js'
 
 function formatTimeLabel(iso, locale = 'ru-RU') {
@@ -207,6 +211,23 @@ export function useSiteChat({ enabled, variant, conversationId = null, visitorLa
       const ready = attachments.getReadyAttachments()
       const body = String(text || '').trim()
       if (!body && !ready.length) return
+
+      if (!isAdmin) {
+        const label = String(visitorLabelRef.current || '').trim()
+        if (guestVisitorLabelTooShort(label)) {
+          setError('Укажите, как к вам обращаться (имя или компания)')
+          return
+        }
+        if (guestBodyTooShort(body, ready.length)) {
+          setError(`Напишите сообщение чуть подробнее (минимум ${SITE_CHAT_GUEST_BODY_MIN_CHARS} символа)`)
+          return
+        }
+        if (body && isLikelyGuestChatSpam(body)) {
+          setError('Сообщение выглядит как случайный набор символов. Переформулируйте, пожалуйста')
+          return
+        }
+      }
+
       setSending(true)
       setError(null)
       try {

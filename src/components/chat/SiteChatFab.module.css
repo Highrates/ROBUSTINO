@@ -95,3 +95,11 @@
   outline: 1px solid #363636;
   outline-offset: 1px;
 }
+
+.nameHint {
+  font-family: 'Commissioner', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  color: #b42318;
+  text-transform: none;
+}

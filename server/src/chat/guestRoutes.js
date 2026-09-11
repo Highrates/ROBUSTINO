@@ -1,4 +1,9 @@
 import { Router } from 'express'
+import {
+  guestBodyTooShort,
+  guestVisitorLabelTooShort,
+  isLikelyGuestChatSpam,
+} from '../../../shared/siteChatLimits.js'
 import { query } from '../db.js'
 import { badRequest, fail } from '../errors.js'
 import { GUEST_UPLOAD_MAX_BYTES, uploadGuest } from './config.js'
@@ -14,6 +19,7 @@ import {
   maybeSetVisitorLabel,
   parseLimit,
   readGuestToken,
+  sanitizeVisitorLabel,
 } from './session.js'
 import { insertMessage, listMessages, validateAttachmentRefs } from './service.js'
 import {
@@ -25,6 +31,34 @@ import {
 import { notifyStaffTelegram } from './telegramNotify.js'
 
 const router = Router()
+
+const ALLOWED_ORIGINS = (process.env.CORS_ORIGIN || 'https://robustino.ru')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean)
+
+function originAllowed(value) {
+  if (!value || typeof value !== 'string') return false
+  try {
+    const u = new URL(value)
+    const origin = `${u.protocol}//${u.host}`
+    return ALLOWED_ORIGINS.includes(origin) || ALLOWED_ORIGINS.includes(value)
+  } catch {
+    return ALLOWED_ORIGINS.includes(value)
+  }
+}
+
+/** Block curl/scanners that omit browser Origin/Referer. */
+function assertGuestBrowserClient(req) {
+  const origin = req.headers.origin
+  const referer = req.headers.referer
+  if (origin) {
+    if (!originAllowed(origin)) throw badRequest('Запрос отклонён')
+    return
+  }
+  if (referer && originAllowed(referer)) return
+  throw badRequest('Запрос отклонён')
+}
 
 let lastGcAt = 0
 function maybeGcEmpty() {
@@ -52,19 +86,38 @@ router.get('/messages', async (req, res) => {
 
 router.post('/messages', async (req, res) => {
   try {
+    assertGuestBrowserClient(req)
     assertGuestMessageLimits(req)
+    // Honeypot: real UI never sends these
+    if (req.body?.website || req.body?.companyUrl || req.body?.hp_field) {
+      throw badRequest('Запрос отклонён')
+    }
     maybeGcEmpty()
     const { conversation } = await ensureGuestConversation(req, res)
     const attachments = validateAttachmentRefs(req.body?.attachments)
-    await maybeSetVisitorLabel(conversation, {
-      visitorLabel: req.body?.visitorLabel ?? req.body?.visitorName,
-      body: req.body?.body,
-    })
+    const body = String(req.body?.body || '')
+    const rawLabel = req.body?.visitorLabel ?? req.body?.visitorName
+    const label = sanitizeVisitorLabel(rawLabel)
+
+    if (!conversation.visitor_label) {
+      if (guestVisitorLabelTooShort(label)) {
+        throw badRequest('Укажите, как к вам обращаться (имя или компания)')
+      }
+    }
+
+    if (guestBodyTooShort(body, attachments.length)) {
+      throw badRequest('Напишите сообщение чуть подробнее')
+    }
+    if (body.trim() && isLikelyGuestChatSpam(body)) {
+      throw badRequest('Сообщение выглядит как случайный набор символов. Переформулируйте, пожалуйста')
+    }
+
+    await maybeSetVisitorLabel(conversation, { visitorLabel: label })
     await maybeSetPageUrl(conversation, req.body?.pageUrl)
     const message = await insertMessage({
       conversationId: conversation.id,
       authorRole: 'CUSTOMER',
-      body: req.body?.body,
+      body,
       attachments,
     })
     void cleanupOrphanChatFiles(conversation.id).catch(() => undefined)
@@ -124,6 +177,7 @@ router.post(
   '/upload',
   (req, _res, next) => {
     try {
+      assertGuestBrowserClient(req)
       assertGuestUploadLimits(req)
       assertContentLength(req, GUEST_UPLOAD_MAX_BYTES)
       next()

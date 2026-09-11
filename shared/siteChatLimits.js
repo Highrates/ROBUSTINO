@@ -4,6 +4,10 @@
  */
 
 export const SITE_CHAT_BODY_MAX_CHARS = 12_000
+/** Guest text without attachments must be at least this long */
+export const SITE_CHAT_GUEST_BODY_MIN_CHARS = 4
+/** Guest display name (required on first message) */
+export const SITE_CHAT_VISITOR_LABEL_MIN = 2
 export const SITE_CHAT_ATTACHMENTS_MAX = 12
 export const SITE_CHAT_VISITOR_LABEL_MAX = 64
 export const SITE_CHAT_PAGE_URL_MAX = 2048
@@ -77,4 +81,37 @@ export const SITE_CHAT_ALLOWED_MIME = [
 export function formatUploadMaxLabel(bytes) {
   const mb = Math.round(bytes / (1024 * 1024))
   return `Файл слишком большой (макс. ${mb} МБ)`
+}
+
+/**
+ * Soft heuristic for keyboard-mash / ad-bot junk (guest messages only).
+ * Returns true when the text looks unlikely to be a real human message.
+ */
+export function isLikelyGuestChatSpam(body) {
+  const t = String(body || '').trim()
+  if (!t) return false
+
+  const letters = t.replace(/[^a-zA-Zа-яА-ЯёЁ]/g, '')
+  if (letters.length >= 8) {
+    const vowels = (letters.match(/[aeiouyаеёиоуыэюя]/gi) || []).length
+    if (vowels / letters.length < 0.15) return true
+  }
+
+  if (/[бвгджзйклмнпрстфхцчшщъь]{6,}/i.test(t)) return true
+  if (/[bcdfghjklmnpqrstvwxz]{7,}/i.test(t)) return true
+
+  // Long run without spaces that is mostly letters → often mash / scanner noise
+  if (letters.length >= 14 && !/\s/.test(t) && letters.length / t.length > 0.85) return true
+
+  return false
+}
+
+/** Guest body rules when there are no attachments. */
+export function guestBodyTooShort(body, attachmentCount = 0) {
+  if (attachmentCount > 0) return false
+  return String(body || '').trim().length < SITE_CHAT_GUEST_BODY_MIN_CHARS
+}
+
+export function guestVisitorLabelTooShort(label) {
+  return String(label || '').trim().length < SITE_CHAT_VISITOR_LABEL_MIN
 }

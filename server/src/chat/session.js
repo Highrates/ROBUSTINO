@@ -4,6 +4,7 @@ import { query } from '../db.js'
 import {
   SITE_CHAT_PAGE_URL_MAX,
   SITE_CHAT_VISITOR_LABEL_MAX,
+  SITE_CHAT_VISITOR_LABEL_MIN,
 } from '../../../shared/siteChatLimits.js'
 import { CHAT_COOKIE, CHAT_COOKIE_MAX_AGE, PAGE_DEFAULT, PAGE_MAX } from './config.js'
 
@@ -105,12 +106,10 @@ export function sanitizePageUrl(raw) {
   }
 }
 
-export async function maybeSetVisitorLabel(conversation, { visitorLabel, body }) {
+export async function maybeSetVisitorLabel(conversation, { visitorLabel }) {
   if (conversation.visitor_label) return
-  const fromName = sanitizeVisitorLabel(visitorLabel)
-  const fromBody = sanitizeVisitorLabel(String(body || '').trim().slice(0, SITE_CHAT_VISITOR_LABEL_MAX))
-  const label = fromName || fromBody
-  if (!label) return
+  const label = sanitizeVisitorLabel(visitorLabel)
+  if (!label || label.length < SITE_CHAT_VISITOR_LABEL_MIN) return
   await query(
     `UPDATE site_chat_conversations
      SET visitor_label = $2, updated_at = NOW()

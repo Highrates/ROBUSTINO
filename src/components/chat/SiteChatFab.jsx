@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom'
 import { ChatWindow } from '@components/chat/ChatWindow'
 import { useSiteChat } from '@/hooks/useSiteChat'
 import { apiFetch } from '@/utils/http'
-import { SITE_CHAT_VISITOR_LABEL_MAX } from '@shared/siteChatLimits.js'
+import { SITE_CHAT_VISITOR_LABEL_MAX, SITE_CHAT_VISITOR_LABEL_MIN } from '@shared/siteChatLimits.js'
 import styles from './SiteChatFab.module.css'
 
 const NAME_KEY = 'robustino_chat_visitor_name'
@@ -84,7 +84,8 @@ export default function SiteChatFab() {
 
   if (isAdminPath) return null
 
-  const showNameField = open && chat.chatMessages.length === 0
+  const nameOk = visitorName.trim().length >= SITE_CHAT_VISITOR_LABEL_MIN
+  const showNameField = open && (chat.chatMessages.length === 0 || !nameOk)
 
   return (
     <>
@@ -117,7 +118,7 @@ export default function SiteChatFab() {
         attachmentsEnabled
         pendingOutgoing={chat.pendingOutgoing}
         pendingAttachmentsHint={chat.pendingAttachmentsHint}
-        allowEmptySend={chat.canSendAttachmentMessage}
+        allowEmptySend={chat.canSendAttachmentMessage && nameOk}
         onAttachFiles={chat.attachChatFiles}
         onRemovePendingAttachment={chat.removePendingChatAttachment}
         hasOlderHistory={chat.hasOlderHistory}
@@ -132,7 +133,7 @@ export default function SiteChatFab() {
         composerBanner={
           showNameField ? (
             <label className={styles.nameField}>
-              <span className={styles.nameLabel}>Как к вам обращаться</span>
+              <span className={styles.nameLabel}>Как к вам обращаться *</span>
               <input
                 type="text"
                 className={styles.nameInput}
@@ -141,7 +142,11 @@ export default function SiteChatFab() {
                 placeholder="Имя или компания"
                 onChange={(e) => onNameChange(e.target.value)}
                 autoComplete="name"
+                required
               />
+              {!nameOk ? (
+                <span className={styles.nameHint}>Нужно указать имя, чтобы отправить сообщение</span>
+              ) : null}
             </label>
           ) : null
         }
