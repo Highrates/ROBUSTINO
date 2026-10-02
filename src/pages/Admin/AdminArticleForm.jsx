@@ -21,6 +21,8 @@ const AdminArticleForm = () => {
     cover_image: null,
     article_date: null,
     status: 'draft',
+    seo_title: '',
+    seo_description: '',
   })
 
   const [errors, setErrors] = useState({})
@@ -39,6 +41,8 @@ const AdminArticleForm = () => {
         cover_image: null,
         article_date: null,
         status: 'draft',
+        seo_title: '',
+        seo_description: '',
       })
       
       fetchArticle(id).then(() => {
@@ -73,6 +77,8 @@ const AdminArticleForm = () => {
           ? new Date(currentArticle.article_date)
           : null,
         status: currentArticle.status || 'draft',
+        seo_title: currentArticle.seo_title || '',
+        seo_description: currentArticle.seo_description || '',
       })
     }
   }, [isEdit, currentArticle, id])
@@ -109,6 +115,8 @@ const AdminArticleForm = () => {
         cover_image: formData.cover_image || null,
         article_date: formData.article_date ? formData.article_date.toISOString().split('T')[0] : null,
         status: formData.status,
+        seo_title: formData.seo_title?.trim() || null,
+        seo_description: formData.seo_description?.trim() || null,
       }
 
       // Генерируем slug только при создании новой статьи
@@ -209,6 +217,30 @@ const AdminArticleForm = () => {
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
               placeholder="Краткое описание статьи"
             />
+          </div>
+
+          <div className="border border-gray-200 rounded-lg p-4 space-y-4 bg-gray-50">
+            <p className="text-sm font-medium text-gray-700">SEO (если пусто — из заголовка и текста)</p>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">SEO title</label>
+              <input
+                type="text"
+                value={formData.seo_title}
+                onChange={(e) => setFormData({ ...formData, seo_title: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                placeholder="Заголовок для поисковиков"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">SEO description</label>
+              <textarea
+                value={formData.seo_description}
+                onChange={(e) => setFormData({ ...formData, seo_description: e.target.value })}
+                rows={2}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                placeholder="Краткое описание для поисковиков (~160 символов)"
+              />
+            </div>
           </div>
 
           {/* Изображение обложки */}

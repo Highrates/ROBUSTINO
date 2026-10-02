@@ -4,6 +4,8 @@ import useFAQLinksStore from '@store/faqLinksStore'
 import Navbar from '@components/product/Navbar'
 import Footer from '@components/common/Footer'
 import Loader from '@components/common/Loader'
+import SeoHead from '@components/common/SeoHead'
+import { pageSeo } from '@/utils/seo'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 
@@ -85,6 +87,7 @@ const Page = () => {
   if (loading) {
     return (
       <div className="article-page relative bg-main-bg">
+        <SeoHead title="Загрузка — ROBUSTINO" path={`/page/${id || ''}`} />
         <Navbar />
         <div className="flex justify-center items-center py-20">
           <Loader />
@@ -97,6 +100,7 @@ const Page = () => {
   if (error || !currentLink) {
     return (
       <div className="article-page relative bg-main-bg">
+        <SeoHead title="Страница не найдена — ROBUSTINO" path="/" noindex />
         <Navbar />
         <div className="flex flex-col items-center justify-center py-20">
           <p className="text-second-text text-lg mb-4">Страница не найдена</p>
@@ -112,6 +116,7 @@ const Page = () => {
   if (!currentLink.is_internal_page) {
     return (
       <div className="article-page relative bg-main-bg">
+        <SeoHead title="Страница недоступна — ROBUSTINO" path="/" noindex />
         <Navbar />
         <div className="flex flex-col items-center justify-center py-20">
           <p className="text-second-text text-lg mb-4">Страница недоступна</p>
@@ -132,8 +137,11 @@ const Page = () => {
       })
     : ''
 
+  const seo = pageSeo(currentLink)
+
   return (
     <div className="article-page relative bg-main-bg">
+      <SeoHead {...seo} />
       <Navbar />
 
       <section ref={pageSectionRef} className="single-article-section">

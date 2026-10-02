@@ -1,4 +1,5 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { HelmetProvider } from 'react-helmet-async'
 
 // Pages
 import Home from '@pages/Home'
@@ -36,241 +37,244 @@ import AdminSettings from '@pages/Admin/AdminSettings'
 import ProtectedRoute from '@components/admin/ProtectedRoute'
 import YandexMetrika from '@components/common/YandexMetrika'
 import SiteChatFab from '@components/chat/SiteChatFab'
+import SeoContentCleanup from '@components/common/SeoContentCleanup'
 
 // Dev Pages
 import StyleGuideDemo from '@pages/StyleGuideDemo'
 
 function App() {
   return (
-    <Router
-      future={{
-        v7_startTransition: true,
-        v7_relativeSplatPath: true,
-      }}
-    >
-      <YandexMetrika />
-      <SiteChatFab />
-      <Routes>
-        {/* Public Routes */}
-        <Route path="/" element={<Home />} />
-        <Route path="/products" element={<Products />} />
-        <Route path="/product/:slug" element={<Product />} />
-        <Route path="/about" element={<About />} />
-        <Route path="/articles" element={<Articles />} />
-        <Route path="/article/:slug" element={<Article />} />
-        <Route path="/projects" element={<Projects />} />
-        <Route path="/upholstery" element={<Upholstery />} />
-        <Route path="/page/:id" element={<Page />} />
-        
-        {/* Dev Routes */}
-        <Route path="/styleguide" element={<StyleGuideDemo />} />
+    <HelmetProvider>
+      <Router
+        future={{
+          v7_startTransition: true,
+          v7_relativeSplatPath: true,
+        }}
+      >
+        <SeoContentCleanup />
+        <YandexMetrika />
+        <SiteChatFab />
+        <Routes>
+          {/* Public Routes */}
+          <Route path="/" element={<Home />} />
+          <Route path="/products" element={<Products />} />
+          <Route path="/product/:slug" element={<Product />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/articles" element={<Articles />} />
+          <Route path="/article/:slug" element={<Article />} />
+          <Route path="/projects" element={<Projects />} />
+          <Route path="/upholstery" element={<Upholstery />} />
+          <Route path="/page/:id" element={<Page />} />
 
-        {/* Admin Routes */}
-        <Route path="/admin/login" element={<Login />} />
-        <Route
-          path="/admin"
-          element={
-            <ProtectedRoute>
-              <AdminDashboard />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/products"
-          element={
-            <ProtectedRoute>
-              <AdminProducts />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/products/new"
-          element={
-            <ProtectedRoute>
-              <AdminProductForm />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/products/:id/edit"
-          element={
-            <ProtectedRoute>
-              <AdminProductForm />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/articles"
-          element={
-            <ProtectedRoute>
-              <AdminArticles />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/articles/new"
-          element={
-            <ProtectedRoute>
-              <AdminArticleForm />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/articles/:id/edit"
-          element={
-            <ProtectedRoute>
-              <AdminArticleForm />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/projects"
-          element={
-            <ProtectedRoute>
-              <AdminProjects />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/projects/new"
-          element={
-            <ProtectedRoute>
-              <AdminProjectForm />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/projects/:id/edit"
-          element={
-            <ProtectedRoute>
-              <AdminProjectForm />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/faq"
-          element={
-            <ProtectedRoute>
-              <AdminFAQ />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/faq/new"
-          element={
-            <ProtectedRoute>
-              <AdminFAQForm />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/faq/:id/edit"
-          element={
-            <ProtectedRoute>
-              <AdminFAQForm />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/upholstery"
-          element={
-            <ProtectedRoute>
-              <AdminUpholstery />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/upholstery/new"
-          element={
-            <ProtectedRoute>
-              <AdminUpholsteryForm />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/upholstery/:id/edit"
-          element={
-            <ProtectedRoute>
-              <AdminUpholsteryForm />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/collections"
-          element={
-            <ProtectedRoute>
-              <AdminCollections />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/collections/new"
-          element={
-            <ProtectedRoute>
-              <AdminCollectionForm />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/collections/:id/edit"
-          element={
-            <ProtectedRoute>
-              <AdminCollectionForm />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/faq-links"
-          element={
-            <ProtectedRoute>
-              <AdminFAQLinks />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/faq-links/new"
-          element={
-            <ProtectedRoute>
-              <AdminFAQLinkForm />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/faq-links/:id/edit"
-          element={
-            <ProtectedRoute>
-              <AdminFAQLinkForm />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/presentation"
-          element={
-            <ProtectedRoute>
-              <AdminPresentation />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/chat"
-          element={
-            <ProtectedRoute>
-              <AdminChat />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/settings"
-          element={
-            <ProtectedRoute>
-              <AdminSettings />
-            </ProtectedRoute>
-          }
-        />
-      </Routes>
-    </Router>
+          {/* Dev Routes */}
+          <Route path="/styleguide" element={<StyleGuideDemo />} />
+
+          {/* Admin Routes */}
+          <Route path="/admin/login" element={<Login />} />
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute>
+                <AdminDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/products"
+            element={
+              <ProtectedRoute>
+                <AdminProducts />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/products/new"
+            element={
+              <ProtectedRoute>
+                <AdminProductForm />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/products/:id/edit"
+            element={
+              <ProtectedRoute>
+                <AdminProductForm />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/articles"
+            element={
+              <ProtectedRoute>
+                <AdminArticles />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/articles/new"
+            element={
+              <ProtectedRoute>
+                <AdminArticleForm />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/articles/:id/edit"
+            element={
+              <ProtectedRoute>
+                <AdminArticleForm />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/projects"
+            element={
+              <ProtectedRoute>
+                <AdminProjects />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/projects/new"
+            element={
+              <ProtectedRoute>
+                <AdminProjectForm />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/projects/:id/edit"
+            element={
+              <ProtectedRoute>
+                <AdminProjectForm />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/faq"
+            element={
+              <ProtectedRoute>
+                <AdminFAQ />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/faq/new"
+            element={
+              <ProtectedRoute>
+                <AdminFAQForm />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/faq/:id/edit"
+            element={
+              <ProtectedRoute>
+                <AdminFAQForm />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/upholstery"
+            element={
+              <ProtectedRoute>
+                <AdminUpholstery />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/upholstery/new"
+            element={
+              <ProtectedRoute>
+                <AdminUpholsteryForm />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/upholstery/:id/edit"
+            element={
+              <ProtectedRoute>
+                <AdminUpholsteryForm />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/collections"
+            element={
+              <ProtectedRoute>
+                <AdminCollections />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/collections/new"
+            element={
+              <ProtectedRoute>
+                <AdminCollectionForm />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/collections/:id/edit"
+            element={
+              <ProtectedRoute>
+                <AdminCollectionForm />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/faq-links"
+            element={
+              <ProtectedRoute>
+                <AdminFAQLinks />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/faq-links/new"
+            element={
+              <ProtectedRoute>
+                <AdminFAQLinkForm />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/faq-links/:id/edit"
+            element={
+              <ProtectedRoute>
+                <AdminFAQLinkForm />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/presentation"
+            element={
+              <ProtectedRoute>
+                <AdminPresentation />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/chat"
+            element={
+              <ProtectedRoute>
+                <AdminChat />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/settings"
+            element={
+              <ProtectedRoute>
+                <AdminSettings />
+              </ProtectedRoute>
+            }
+          />
+        </Routes>
+      </Router>
+    </HelmetProvider>
   )
 }
 
 export default App
-

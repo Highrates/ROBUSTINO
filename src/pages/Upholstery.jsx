@@ -4,6 +4,8 @@ import Footer from '@components/common/Footer'
 import useUpholsteryStore from '@store/upholsteryStore'
 import { getUpholsteryColors } from '@utils/api'
 import Loader from '@components/common/Loader'
+import SeoHead from '@components/common/SeoHead'
+import { STATIC_PAGES } from '@/utils/seo'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 
@@ -304,6 +306,7 @@ const Upholstery = () => {
 
   return (
     <div className="upholstery-page relative bg-main-bg">
+      <SeoHead {...STATIC_PAGES.upholstery} />
       <Navbar />
       
       <section ref={allUpholsterySectionRef} className="all-upholstery">

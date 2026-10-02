@@ -72,6 +72,9 @@ const AdminProductForm = () => {
     parent_product_id: null, // ID основной модели (для конфигураций)
     configurations: [], // Массив ID товаров-конфигураций
     show_only_on_main_model: false, // Только на странице основной модели (не в общем каталоге)
+    seo_title: '',
+    seo_description: '',
+    feed_price: '',
   })
   // Сохраняем токен при смене статуса, чтобы можно было восстановить
   const [savedPrivateToken, setSavedPrivateToken] = useState(null)
@@ -216,6 +219,12 @@ const AdminProductForm = () => {
         parent_product_id: currentProduct.parent_product_id || null,
         configurations: [], // Загрузим отдельно
         show_only_on_main_model: currentProduct.show_only_on_main_model ?? false,
+        seo_title: currentProduct.seo_title || '',
+        seo_description: currentProduct.seo_description || '',
+        feed_price:
+          currentProduct.feed_price != null && currentProduct.feed_price !== ''
+            ? String(currentProduct.feed_price)
+            : '',
       })
 
       // Загружаем конфигурации (товары, у которых parent_product_id = текущий товар)
@@ -318,6 +327,11 @@ const AdminProductForm = () => {
         status: formData.status,
         private_token: finalToken,
         show_only_on_main_model: formData.show_only_on_main_model ?? false,
+        seo_title: formData.seo_title?.trim() || null,
+        seo_description: formData.seo_description?.trim() || null,
+        feed_price: formData.feed_price !== '' && formData.feed_price != null
+          ? parseFloat(formData.feed_price)
+          : null,
       }
 
       // Генерируем slug только при создании нового товара
@@ -489,6 +503,35 @@ const AdminProductForm = () => {
             {errors.description && <p className="mt-1 text-sm text-red-600">{errors.description}</p>}
           </div>
 
+          {/* SEO (опционально) */}
+          <div className="border border-gray-200 rounded-lg p-4 space-y-4 bg-gray-50">
+            <p className="text-sm font-medium text-gray-700">SEO (если пусто — из названия и описания)</p>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                SEO title
+              </label>
+              <input
+                type="text"
+                value={formData.seo_title}
+                onChange={(e) => setFormData({ ...formData, seo_title: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                placeholder="Например: Кресло Uno для актовых залов — ROBUSTINO"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                SEO description
+              </label>
+              <textarea
+                value={formData.seo_description}
+                onChange={(e) => setFormData({ ...formData, seo_description: e.target.value })}
+                rows={2}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                placeholder="Краткое описание для поисковиков (~160 символов)"
+              />
+            </div>
+          </div>
+
           {/* Срок поставки */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -555,6 +598,27 @@ const AdminProductForm = () => {
               <option value="Под заказ">Под заказ</option>
               <option value="Нет в наличии">Нет в наличии</option>
             </select>
+            <p className="mt-1 text-xs text-gray-500">
+              Для Яндекс.фида: «Нет в наличии» → available=false, иначе true.
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Цена для Яндекс.Директ (₽)
+            </label>
+            <input
+              type="number"
+              min="0"
+              step="1"
+              value={formData.feed_price}
+              onChange={(e) => setFormData({ ...formData, feed_price: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+              placeholder="Без цены оффер не попадёт в фид"
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              Нужны цена &gt; 0 и хотя бы одно фото каталога.
+            </p>
           </div>
 
           {/* 3D модель */}

@@ -3,11 +3,13 @@ import { query } from '../db.js'
 import { optionalAuth, requireAuth, isAdmin } from '../auth.js'
 import { fail } from '../errors.js'
 import { nextDisplayOrder, updateOrder, pick, buildInsert, buildUpdate } from '../util.js'
+import { refreshPath, invalidateCachedPath, syncEntitySeoCache } from '../seo/cache.js'
 
 const router = Router()
 const FIELDS = [
   'title', 'slug', 'content', 'excerpt', 'cover_image', 'category', 'tags',
   'published_at', 'author', 'status', 'views', 'subtitle', 'article_date', 'display_order',
+  'seo_title', 'seo_description',
 ]
 
 router.get('/', optionalAuth, async (req, res) => {
@@ -67,7 +69,13 @@ router.post('/', requireAuth, async (req, res) => {
     if (!data.status) data.status = 'draft'
     const ins = buildInsert('articles', data)
     const { rows } = await query(ins.text, ins.values)
-    res.status(201).json(rows[0])
+    const row = rows[0]
+    if (row?.status === 'published' && row.slug) {
+      refreshPath(`/article/${row.slug}`).catch((e) =>
+        console.error('[seo-cache] article create warm', e.message)
+      )
+    }
+    res.status(201).json(row)
   } catch (e) {
     fail(res, e)
   }
@@ -75,11 +83,27 @@ router.post('/', requireAuth, async (req, res) => {
 
 router.patch('/:id', requireAuth, async (req, res) => {
   try {
+    const { rows: beforeRows } = await query(
+      'SELECT slug, status FROM articles WHERE id = $1 LIMIT 1',
+      [req.params.id]
+    )
+    const before = beforeRows[0]
+    if (!before) return res.status(404).json({ error: 'Не найдена' })
+
     const upd = buildUpdate('articles', req.params.id, pick(req.body || {}, FIELDS))
     if (!upd) return res.status(400).json({ error: 'Нет данных' })
     const { rows } = await query(upd.text, upd.values)
     if (!rows[0]) return res.status(404).json({ error: 'Не найдена' })
-    res.json(rows[0])
+    const row = rows[0]
+
+    syncEntitySeoCache({
+      kind: 'article',
+      oldSlug: before.slug,
+      newSlug: row.slug,
+      published: row.status === 'published',
+    }).catch((e) => console.error('[seo-cache] article patch', e.message))
+
+    res.json(row)
   } catch (e) {
     fail(res, e)
   }
@@ -87,8 +111,19 @@ router.patch('/:id', requireAuth, async (req, res) => {
 
 router.delete('/:id', requireAuth, async (req, res) => {
   try {
+    const { rows: beforeRows } = await query(
+      'SELECT slug FROM articles WHERE id = $1 LIMIT 1',
+      [req.params.id]
+    )
+    const slug = beforeRows[0]?.slug
+
     const { rowCount } = await query('DELETE FROM articles WHERE id = $1', [req.params.id])
     if (!rowCount) return res.status(404).json({ error: 'Не найдена' })
+
+    if (slug) {
+      invalidateCachedPath(`/article/${slug}`).catch(() => {})
+    }
+
     res.json({ ok: true })
   } catch (e) {
     fail(res, e)

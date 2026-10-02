@@ -1,0 +1,73 @@
+# SEO / SPA shell — fragment for robustino.ru
+# Apply alongside existing /api and /media locations.
+#
+# Goal:
+# - /sitemap.xml and /feed.yml → Express API
+# - Public HTML document routes → Express SEO shell (title/meta/JSON-LD in first HTML)
+# - Built assets (JS/CSS) stay on disk under SPA root
+# - Optional: replace pm2 `serve` by setting SPA_DIST on the API and proxying `/` to :4000
+#
+# Env on API (.env):
+#   SITE_PUBLIC_URL=https://robustino.ru
+#   SPA_DIST=/var/www/html          # Vite dist
+#   SEO_CACHE_DIR=/var/www/html/seo-cache
+#
+# Migration:
+#   psql "$DATABASE_URL" -f db/migrations/20261002_seo_fields.sql
+#
+# Warm cache (cron):
+#   0 3 * * * cd /root/robustino-api && node scripts/warm-seo-cache.mjs
+
+# --- Option A: keep static assets on disk, HTML via API ---
+
+location = /sitemap.xml {
+    proxy_pass http://127.0.0.1:4000/api/seo/sitemap.xml;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+
+location = /feed.yml {
+    proxy_pass http://127.0.0.1:4000/api/seo/feed.yml;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+
+location = /robots.txt {
+    root /var/www/html;
+    try_files /robots.txt =404;
+}
+
+# Document routes with SEO shell
+location ~ ^/(product|article|page)/ {
+    proxy_pass http://127.0.0.1:4000;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header Accept $http_accept;
+}
+
+location ~ ^/(products|about|articles|projects|upholstery)/?$ {
+    proxy_pass http://127.0.0.1:4000;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header Accept $http_accept;
+}
+
+location = / {
+    proxy_pass http://127.0.0.1:4000/;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header Accept $http_accept;
+}
+
+# Assets + admin SPA fallback (existing serve / try_files)
+# location / {
+#     root /var/www/html;
+#     try_files $uri $uri/ /index.html;
+# }
+
+# --- Option B: API serves SPA entirely (SPA_DIST set) ---
+# location / {
+#     proxy_pass http://127.0.0.1:4000;
+#     proxy_set_header Host $host;
+#     proxy_set_header X-Forwarded-Proto $scheme;
+# }

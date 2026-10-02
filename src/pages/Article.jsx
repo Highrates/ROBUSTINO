@@ -4,6 +4,8 @@ import Navbar from '@components/product/Navbar'
 import Footer from '@components/common/Footer'
 import useArticlesStore from '@store/articlesStore'
 import Loader from '@components/common/Loader'
+import SeoHead from '@components/common/SeoHead'
+import { articleSeo } from '@/utils/seo'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 
@@ -126,6 +128,7 @@ const Article = () => {
   if (loading) {
     return (
       <div className="article-page relative bg-main-bg">
+        <SeoHead title="Загрузка — ROBUSTINO" path={`/article/${slug || ''}`} />
         <Navbar />
         <div className="flex justify-center items-center py-20">
           <Loader />
@@ -138,6 +141,7 @@ const Article = () => {
   if (error) {
     return (
       <div className="article-page relative bg-main-bg">
+        <SeoHead title="Ошибка — ROBUSTINO" path="/articles" noindex />
         <Navbar />
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
           Ошибка загрузки: {error}
@@ -150,6 +154,7 @@ const Article = () => {
   if (!currentArticle) {
     return (
       <div className="article-page relative bg-main-bg">
+        <SeoHead title="Статья не найдена — ROBUSTINO" path="/articles" noindex />
         <Navbar />
         <div className="text-center py-20">
           <p className="text-second-text text-lg">Статья не найдена</p>
@@ -169,8 +174,11 @@ const Article = () => {
       })
     : ''
 
+  const seo = articleSeo(currentArticle)
+
   return (
     <div className="article-page relative bg-main-bg">
+      <SeoHead {...seo} />
       <Navbar />
       
       <section ref={articleSectionRef} className="single-article-section">

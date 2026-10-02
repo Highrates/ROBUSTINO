@@ -12,6 +12,8 @@ import useProjectsStore from '@store/projectsStore'
 import { getProductProjects } from '@utils/api'
 import { getCatalogProducts, getNextCatalogProduct, getProductPath } from '@utils/catalogProducts'
 import { trackObjectView, trackProductView } from '@/utils/yandexMetrika'
+import SeoHead from '@components/common/SeoHead'
+import { productSeo } from '@/utils/seo'
 import Loader from '@components/common/Loader'
 
 // Register ScrollTrigger plugin
@@ -674,6 +676,7 @@ const Product = () => {
   if (loading && !currentProduct && !error) {
     return (
       <div className="product-page relative bg-main-bg">
+        <SeoHead title="Загрузка — ROBUSTINO" description="Каталог кресел ROBUSTINO" path={`/product/${slug || ''}`} />
         <Navbar />
         <div className="padding-global product-page-content-pad">
           <Loader />
@@ -686,6 +689,7 @@ const Product = () => {
   if ((error || (!currentProduct && !loading)) && slug) {
     return (
       <div className="product-page relative bg-main-bg">
+        <SeoHead title="Продукт не найден — ROBUSTINO" description="Каталог кресел ROBUSTINO" path="/products" noindex />
         <Navbar />
         <div className="padding-global product-page-content-pad">
           <p className="text-red-500">
@@ -700,8 +704,11 @@ const Product = () => {
     )
   }
 
+  const seo = productSeo(currentProduct)
+
   return (
     <div className="product-page relative bg-main-bg">
+      <SeoHead {...seo} />
       <Navbar />
       
       {/* Product Section - Fullscreen 3D Scene */}
@@ -843,7 +850,7 @@ const Product = () => {
                         {firstImage ? (
                           <img
                             src={firstImage}
-                            alt=""
+                            alt={product.name || 'Конфигурация кресла'}
                             className="product-config-thumb-img object-cover"
                             onError={(e) => {
                               e.target.style.display = 'none'

@@ -7,6 +7,8 @@ import ContactsSection from '@components/common/ContactsSection'
 import useProjectsStore from '@store/projectsStore'
 import { trackObjectView } from '@/utils/yandexMetrika'
 import Loader from '@components/common/Loader'
+import SeoHead from '@components/common/SeoHead'
+import { STATIC_PAGES } from '@/utils/seo'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 
@@ -270,6 +272,7 @@ const Projects = () => {
 
   return (
     <div className="projects-page relative bg-main-bg">
+      <SeoHead {...STATIC_PAGES.projects} />
       <Navbar />
       
       <section ref={allProjectsSectionRef} className="projects-section">

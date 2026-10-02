@@ -15,6 +15,8 @@ import useFAQStore from '@store/faqStore'
 import useFAQLinksStore from '@store/faqLinksStore'
 import usePresentationStore from '@store/presentationStore'
 import { trackObjectView } from '@/utils/yandexMetrika'
+import SeoHead from '@components/common/SeoHead'
+import { STATIC_PAGES } from '@/utils/seo'
 
 // Register ScrollTrigger plugin
 gsap.registerPlugin(ScrollTrigger)
@@ -999,6 +1001,7 @@ const Home = () => {
 
   return (
     <div className="home-page relative bg-main-bg">
+      <SeoHead {...STATIC_PAGES.home} />
       <Navbar />
       
       {/* Main Section - 100vh */}

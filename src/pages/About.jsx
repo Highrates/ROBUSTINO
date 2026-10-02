@@ -6,6 +6,8 @@ import ContactsSection from '@components/common/ContactsSection'
 import Footer from '@components/common/Footer'
 import useGSAP from '@hooks/useGSAP'
 import { getNavbarHeight } from '@utils/layout'
+import SeoHead from '@components/common/SeoHead'
+import { STATIC_PAGES } from '@/utils/seo'
 
 // Register ScrollTrigger plugin
 gsap.registerPlugin(ScrollTrigger)
@@ -110,6 +112,7 @@ const About = () => {
 
   return (
     <div className="about-page">
+      <SeoHead {...STATIC_PAGES.about} />
       <Navbar />
       <section ref={aboutSectionRef} className="About-page-section">
         <div className="padding-global">

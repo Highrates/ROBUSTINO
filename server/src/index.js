@@ -14,6 +14,8 @@ import productProjectsRoutes from './routes/productProjects.js'
 import uploadRoutes from './routes/upload.js'
 import chatRoutes from './routes/chat.js'
 import settingsRoutes from './routes/settings.js'
+import seoRoutes from './seo/routes.js'
+import { mountSpaAndSeo } from './seo/documentRoutes.js'
 
 assertAuthConfig()
 
@@ -74,6 +76,10 @@ app.use('/api/product-projects', productProjectsRoutes)
 app.use('/api/upload', uploadRoutes)
 app.use('/api/chat', chatRoutes)
 app.use('/api/settings', settingsRoutes)
+app.use('/api/seo', seoRoutes)
+
+// Public HTML shells + optional SPA static (when SPA_DIST is set)
+mountSpaAndSeo(app)
 
 app.use((err, _req, res, _next) => {
   // express.json parse failures

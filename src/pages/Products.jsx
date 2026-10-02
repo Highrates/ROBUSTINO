@@ -4,6 +4,8 @@ import Navbar from '@components/product/Navbar'
 import Footer from '@components/common/Footer'
 import useProductsStore from '@store/productsStore'
 import Loader from '@components/common/Loader'
+import SeoHead from '@components/common/SeoHead'
+import { STATIC_PAGES } from '@/utils/seo'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 
@@ -172,6 +174,7 @@ const Products = () => {
 
   return (
     <div className="products-page relative bg-main-bg">
+      <SeoHead {...STATIC_PAGES.products} />
       <Navbar />
       
       <section ref={allProductsSectionRef} className="all-products">

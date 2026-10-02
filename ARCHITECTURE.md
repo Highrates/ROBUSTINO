@@ -398,6 +398,17 @@ SPA-хиты: `src/components/common/YandexMetrika.jsx`. Цели (`reachGoal`):
 | `product_view` | Открыта страница товара `/product/:slug` |
 | `object_view` | Открыт модальный просмотр реализованного объекта (главная, `/projects`, карточка товара) |
 
+### SEO
+
+- Клиент: `react-helmet-async` (`SeoHead`), cleanup `#seo-content` + `#seo-json-ld` после гидрации
+- Title: общий `formatPageTitle` (клиент `src/utils/seo.js` ↔ сервер `server/src/seo/config.js`)
+- API: `server/src/seo/` — sitemap (`/api/seo/sitemap.xml`, `/sitemap.xml`), YML (`/api/seo/feed.yml`, `/feed.yml`), HTML-оболочки, дисковый кэш (`SEO_CACHE_DIR`)
+- YML: офферы только с `feed_price > 0` и фото; `available` по точным значениям «Наличие»
+- Миграция: `db/migrations/20261002_seo_fields.sql` (`seo_title`, `seo_description`, `feed_price`)
+- Логотип Organization: `/logo-org.png` (512×512); OG default: `/hero-Archi.png`
+- nginx-фрагмент: `deploy/nginx-seo.conf.example`
+- Прогрев кэша: `node server/scripts/warm-seo-cache.mjs` или `POST /api/seo/warm-cache` (auth); invalidate/warm на publish/delete/slug и FAQ pages
+
 ---
 
 ## 📖 Роутинг
