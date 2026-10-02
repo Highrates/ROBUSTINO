@@ -163,13 +163,13 @@ export function ChatWindow({
   const textareaRef = useRef(null)
   const messagesScrollRef = useRef(null)
   const panelRef = useRef(null)
+  const [draft, setDraft] = useState('')
+  const [blendReady, setBlendReady] = useState(embedded)
+  const [lightbox, setLightbox] = useState(null)
   const onCloseRef = useRef(onClose)
   const lightboxRef = useRef(lightbox)
   onCloseRef.current = onClose
   lightboxRef.current = lightbox
-  const [draft, setDraft] = useState('')
-  const [blendReady, setBlendReady] = useState(embedded)
-  const [lightbox, setLightbox] = useState(null)
 
   const scrollMessagesToBottom = useCallback(() => {
     const el = messagesScrollRef.current
