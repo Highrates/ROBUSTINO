@@ -24,7 +24,9 @@ router.get('/:productId', async (req, res) => {
 router.put('/:productId', requireAuth, async (req, res) => {
   try {
     const productId = req.params.productId
-    const projectIds = Array.isArray(req.body?.projectIds) ? req.body.projectIds : []
+    const projectIds = Array.isArray(req.body?.projectIds)
+      ? [...new Set(req.body.projectIds.filter(Boolean).map(String))]
+      : []
 
     await withClient(async (client) => {
       await client.query('BEGIN')
@@ -36,6 +38,31 @@ router.put('/:productId', requireAuth, async (req, res) => {
             [productId, projectId]
           )
         }
+
+        // Синхронизация legacy projects.product_id с M2M:
+        // отвязанные от этой модели проекты больше не ссылаются на неё
+        if (projectIds.length === 0) {
+          await client.query(
+            `UPDATE projects SET product_id = NULL, updated_at = NOW()
+             WHERE product_id = $1`,
+            [productId]
+          )
+        } else {
+          await client.query(
+            `UPDATE projects SET product_id = NULL, updated_at = NOW()
+             WHERE product_id = $1
+               AND NOT (id = ANY($2::uuid[]))`,
+            [productId, projectIds]
+          )
+          // Если у проекта ещё нет «основной» модели — проставим эту
+          await client.query(
+            `UPDATE projects SET product_id = $1, updated_at = NOW()
+             WHERE id = ANY($2::uuid[])
+               AND product_id IS NULL`,
+            [productId, projectIds]
+          )
+        }
+
         await client.query('COMMIT')
       } catch (e) {
         await client.query('ROLLBACK')

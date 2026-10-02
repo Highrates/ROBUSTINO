@@ -62,7 +62,16 @@ router.post('/', requireAuth, async (req, res) => {
     if (data.display_order == null) data.display_order = await nextDisplayOrder('projects')
     const ins = buildInsert('projects', data)
     const { rows } = await query(ins.text, ins.values)
-    res.status(201).json(rows[0])
+    const project = rows[0]
+    if (project?.product_id) {
+      await query(
+        `INSERT INTO product_projects (product_id, project_id)
+         VALUES ($1, $2)
+         ON CONFLICT (product_id, project_id) DO NOTHING`,
+        [project.product_id, project.id]
+      )
+    }
+    res.status(201).json(project)
   } catch (e) {
     fail(res, e)
   }
@@ -70,10 +79,36 @@ router.post('/', requireAuth, async (req, res) => {
 
 router.patch('/:id', requireAuth, async (req, res) => {
   try {
-    const upd = buildUpdate('projects', req.params.id, pick(req.body || {}, FIELDS))
+    const id = req.params.id
+    const patch = pick(req.body || {}, FIELDS)
+    const { rows: prevRows } = await query('SELECT product_id FROM projects WHERE id = $1', [id])
+    if (!prevRows[0]) return res.status(404).json({ error: 'Не найден' })
+    const prevProductId = prevRows[0].product_id
+
+    const upd = buildUpdate('projects', id, patch)
     if (!upd) return res.status(400).json({ error: 'Нет данных' })
     const { rows } = await query(upd.text, upd.values)
     if (!rows[0]) return res.status(404).json({ error: 'Не найден' })
+
+    // Синхронизация M2M при смене product_id в форме проекта
+    if (Object.prototype.hasOwnProperty.call(patch, 'product_id')) {
+      const nextProductId = rows[0].product_id
+      if (prevProductId && prevProductId !== nextProductId) {
+        await query(
+          'DELETE FROM product_projects WHERE project_id = $1 AND product_id = $2',
+          [id, prevProductId]
+        )
+      }
+      if (nextProductId) {
+        await query(
+          `INSERT INTO product_projects (product_id, project_id)
+           VALUES ($1, $2)
+           ON CONFLICT (product_id, project_id) DO NOTHING`,
+          [nextProductId, id]
+        )
+      }
+    }
+
     res.json(rows[0])
   } catch (e) {
     fail(res, e)

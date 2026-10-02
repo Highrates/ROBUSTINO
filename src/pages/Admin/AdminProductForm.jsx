@@ -344,8 +344,8 @@ const AdminProductForm = () => {
         productId = created.id
       }
 
-      // Сохраняем связи с проектами
-      if (productId && selectedProjects.length > 0) {
+      // Всегда сохраняем связи (в т.ч. пустой список — иначе отвязка не пишется в БД)
+      if (productId) {
         console.log('Сохранение связей с проектами:', selectedProjects)
         await setProductProjects(productId, selectedProjects)
       }
