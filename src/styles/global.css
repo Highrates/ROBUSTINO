@@ -2493,6 +2493,35 @@ h1, h2, h3, h4, h5, h6 {
     min-width: 0;
   }
 
+  .product-page .product-details-description .project-modal-description {
+    font-size: 22px;
+    line-height: 1.45;
+  }
+
+  .product-page .product-details-gallery {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    width: 100%;
+    flex-direction: unset;
+  }
+
+  .product-page .product-details-gallery .project-modal-image-container {
+    width: 100%;
+  }
+
+  .product-page .product-details-gallery .project-modal-image {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1;
+    object-fit: cover;
+    border-radius: 4px;
+  }
+
+  .product-page .product-details-gallery .project-modal-image-overlay {
+    border-radius: 4px;
+  }
+
   .product-details-projects-list {
     display: flex;
     flex-direction: column;
@@ -2790,13 +2819,13 @@ h1, h2, h3, h4, h5, h6 {
     }
 
     .product-page .product-details-description .project-modal-description {
-      font-size: 18px;
-      line-height: 1.55;
+      font-size: 22px;
+      line-height: 1.45;
     }
 
     .product-page .product-details-gallery {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 8px;
       width: 100%;
       margin-left: 0;

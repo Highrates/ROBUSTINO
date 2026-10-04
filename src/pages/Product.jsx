@@ -833,29 +833,37 @@ const Product = () => {
                 </p>
                 )}
 
-                {showroomUpholstery?.image_url && (
-                  <div
-                    className="product-materials-wrap inline-flex justify-start items-center cursor-pointer hover:opacity-80 transition-opacity"
-                    onClick={() => navigate('/upholstery')}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault()
-                        navigate('/upholstery')
-                      }
-                    }}
-                    aria-label="Перейти к вариантам обивки кресел"
-                  >
-                    <div className="materials w-7 h-7 relative">
-                      <div className="w-7 h-7 left-0 top-0 absolute rounded-full border-[0.50px] border-black/25" />
-                      <div
-                        className="w-6 h-6 left-[2px] top-[2px] absolute rounded-full backdrop-blur-[2px] bg-cover bg-center"
-                        style={{ backgroundImage: `url(${showroomUpholstery.image_url})` }}
-                      />
-                    </div>
+                <div
+                  className="product-materials-wrap inline-flex justify-start items-center gap-2.5 cursor-pointer hover:opacity-80 transition-opacity"
+                  onClick={() => navigate('/upholstery')}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      navigate('/upholstery')
+                    }
+                  }}
+                  aria-label="Перейти к вариантам обивки кресел"
+                >
+                  <div className="materials w-7 h-7 relative">
+                    <div className="w-7 h-7 left-0 top-0 absolute rounded-full border-[0.50px] border-black/25" />
+                    <div
+                      className="w-6 h-6 left-[2px] top-[2px] absolute rounded-full backdrop-blur-[2px] bg-cover bg-center"
+                      style={{
+                        backgroundImage: `url(${showroomUpholstery?.image_url || '/materials/material1.jpg'})`,
+                      }}
+                    />
                   </div>
-                )}
+                  <div className="count-materials inline-flex justify-start items-center gap-1.5">
+                    <span className="text-main-text" style={{ fontSize: '15px', fontWeight: 450 }}>
+                      / {upholsteryVariants?.length || 0}
+                    </span>
+                    <span className="text-main-text" style={{ fontSize: '15px' }} aria-hidden="true">
+                      →
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -1067,34 +1075,12 @@ const Product = () => {
                   </Link>
                 </div>
 
-                {/* Статьи → перелинковка в блог */}
-                {relatedArticles.length > 0 && (
-                  <div className="project-modal-info-item product-details-articles">
-                    <p className="project-modal-info-label">Статьи и материалы</p>
-                    <div className="product-details-articles-list">
-                      {relatedArticles.map((article) => (
-                        <Link
-                          key={article.id}
-                          to={`/article/${article.slug}`}
-                          className="product-details-article-link"
-                        >
-                          {article.title}
-                        </Link>
-                      ))}
-                    </div>
-                    <Link to="/articles" className="product-details-related-link">
-                      <span>Все статьи</span>
-                      <img src="/send.svg" alt="" className="send-icon" />
-                    </Link>
-                  </div>
-                )}
-
                 {/* Галерея: фото товара + изображения из привязанных проектов */}
                 {galleryImages.length > 0 && (
                   <div className="project-imgs-wrapper product-details-gallery">
-                    {galleryImages.slice(0, 3).map((image, index) => {
-                      const isLastVisible = index === 2 && galleryImages.length > 3
-                      const remainingCount = galleryImages.length - 3
+                    {galleryImages.slice(0, 6).map((image, index) => {
+                      const isLastVisible = index === 5 && galleryImages.length > 6
+                      const remainingCount = galleryImages.length - 6
                       
                       return (
                         <div
@@ -1202,6 +1188,28 @@ const Product = () => {
                     )
                   })()}
                 </div>
+
+                {/* Статьи и материалы — ниже PDF и 3D */}
+                {relatedArticles.length > 0 && (
+                  <div className="project-modal-info-item product-details-articles">
+                    <p className="project-modal-info-label">Статьи и материалы</p>
+                    <div className="product-details-articles-list">
+                      {relatedArticles.map((article) => (
+                        <Link
+                          key={article.id}
+                          to={`/article/${article.slug}`}
+                          className="product-details-article-link"
+                        >
+                          {article.title}
+                        </Link>
+                      ))}
+                    </div>
+                    <Link to="/articles" className="product-details-related-link">
+                      <span>Все статьи</span>
+                      <img src="/send.svg" alt="" className="send-icon" />
+                    </Link>
+                  </div>
+                )}
               </div>
             </div>
           </div>
