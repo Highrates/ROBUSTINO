@@ -64,7 +64,7 @@ function App() {
           <Route path="/article/:slug" element={<Article />} />
           <Route path="/projects" element={<Projects />} />
           <Route path="/upholstery" element={<Upholstery />} />
-          <Route path="/page/:id" element={<Page />} />
+          <Route path="/page/:slug" element={<Page />} />
 
           {/* Dev Routes */}
           <Route path="/styleguide" element={<StyleGuideDemo />} />

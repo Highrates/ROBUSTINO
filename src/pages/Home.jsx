@@ -1,4 +1,4 @@
-import { useRef, useEffect, Fragment, useState } from 'react'
+import { useRef, useEffect, Fragment, useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { createPortal } from 'react-dom'
 import gsap from 'gsap'
@@ -16,7 +16,7 @@ import useFAQLinksStore from '@store/faqLinksStore'
 import usePresentationStore from '@store/presentationStore'
 import { trackObjectView } from '@/utils/yandexMetrika'
 import SeoHead from '@components/common/SeoHead'
-import { STATIC_PAGES } from '@/utils/seo'
+import { buildHomeSeo } from '@/utils/seo'
 
 // Register ScrollTrigger plugin
 gsap.registerPlugin(ScrollTrigger)
@@ -999,9 +999,14 @@ const Home = () => {
     }
   }, [faqs.length])
 
+  const homeSeo = useMemo(
+    () => buildHomeSeo(faqs.filter((f) => f.is_active === true)),
+    [faqs]
+  )
+
   return (
     <div className="home-page relative bg-main-bg">
-      <SeoHead {...STATIC_PAGES.home} />
+      <SeoHead {...homeSeo} />
       <Navbar />
       
       {/* Main Section - 100vh */}
@@ -1341,7 +1346,7 @@ const Home = () => {
                       link.is_internal_page ? (
                         <Link
                           key={link.id}
-                          to={`/page/${link.id}`}
+                          to={`/page/${link.slug || link.id}`}
                           className="faq-link"
                         >
                           {link.name}

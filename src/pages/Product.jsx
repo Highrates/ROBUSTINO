@@ -9,6 +9,7 @@ import ModelViewer from '@components/3d/ModelViewer'
 import useProductsStore from '@store/productsStore'
 import useUpholsteryStore from '@store/upholsteryStore'
 import useProjectsStore from '@store/projectsStore'
+import useArticlesStore from '@store/articlesStore'
 import { getProductProjects } from '@utils/api'
 import { getCatalogProducts, getNextCatalogProduct, getProductPath } from '@utils/catalogProducts'
 import { trackObjectView, trackProductView } from '@/utils/yandexMetrika'
@@ -25,6 +26,7 @@ const Product = () => {
   const { currentProduct, products, loading, error, fetchProductBySlug, fetchProducts } = useProductsStore()
   const { variants: upholsteryVariants, fetchVariants } = useUpholsteryStore()
   const { projects, fetchProjects } = useProjectsStore()
+  const { articles, fetchArticles } = useArticlesStore()
   const [autoRotate, setAutoRotate] = useState(true)
   const [zoomLevel, setZoomLevel] = useState(0) // 0 = нормальный, 1 = приближенный, -1 = отдаленный
   const [modelScale, setModelScale] = useState(0.7) // Начальный scale для анимации (будет увеличиваться до 1)
@@ -93,6 +95,11 @@ const Product = () => {
       fetchProjects()
     }
   }, [fetchProjects, projects.length])
+
+  // Статьи для блока перелинковки на карточке товара
+  useEffect(() => {
+    fetchArticles().catch(() => {})
+  }, [fetchArticles])
 
   // Загружаем проекты, привязанные к продукту через «Реализованные объекты» в админке
   useEffect(() => {
@@ -576,6 +583,13 @@ const Product = () => {
     setIsModelFormatMenuOpen(false)
   }, [slug])
 
+  // Свежие статьи для SEO-перелинковки (категорий у статей пока нет — берём последние)
+  const relatedArticles = useMemo(() => {
+    return (articles || [])
+      .filter((a) => a.status === 'published' && a.slug)
+      .slice(0, 3)
+  }, [articles])
+
   // productProjects загружаются через getProductProjects (таблица product_projects)
 
   // Открытие просмотра изображения
@@ -704,7 +718,10 @@ const Product = () => {
     )
   }
 
-  const seo = productSeo(currentProduct)
+  const parentSlug =
+    currentProduct?.parent_slug ||
+    products.find((p) => p.id === currentProduct?.parent_product_id)?.slug
+  const seo = productSeo(currentProduct, { parentSlug })
 
   return (
     <div className="product-page relative bg-main-bg">
@@ -996,19 +1013,24 @@ const Product = () => {
 
               {/* Боковая колонка: проекты, фото, ссылки */}
               <div ref={pdcLeftRef} className="pdc-aside">
-                {/* Реализованные объекты с этой моделью */}
-                {productProjects.length > 0 && (
-                  <div className="project-modal-info-item product-details-projects">
-                    <p className="project-modal-info-label">Реализованные объекты с этой моделью</p>
+                {/* Реализованные объекты: привязанные + всегда ссылка на /projects */}
+                <div className="project-modal-info-item product-details-projects">
+                  <p className="project-modal-info-label">
+                    {productProjects.length > 0
+                      ? 'Реализованные объекты с этой моделью'
+                      : 'Реализованные объекты'}
+                  </p>
+                  {productProjects.length > 0 && (
                     <div className="product-details-projects-list">
                       {productProjects.slice(0, 7).map((project) => (
-                        <span
+                        <button
                           key={project.id}
+                          type="button"
                           onClick={() => handleOpenProjectModal(project)}
                           className="project-modal-info-value project-modal-link"
                         >
                           {project.name}
-                        </span>
+                        </button>
                       ))}
                       {productProjects.length > 7 && (
                         <Link
@@ -1019,6 +1041,32 @@ const Product = () => {
                         </Link>
                       )}
                     </div>
+                  )}
+                  <Link to="/projects" className="product-details-related-link">
+                    <span>Все реализованные объекты</span>
+                    <img src="/send.svg" alt="" className="send-icon" />
+                  </Link>
+                </div>
+
+                {/* Статьи → перелинковка в блог */}
+                {relatedArticles.length > 0 && (
+                  <div className="project-modal-info-item product-details-articles">
+                    <p className="project-modal-info-label">Статьи и материалы</p>
+                    <div className="product-details-articles-list">
+                      {relatedArticles.map((article) => (
+                        <Link
+                          key={article.id}
+                          to={`/article/${article.slug}`}
+                          className="product-details-article-link"
+                        >
+                          {article.title}
+                        </Link>
+                      ))}
+                    </div>
+                    <Link to="/articles" className="product-details-related-link">
+                      <span>Все статьи</span>
+                      <img src="/send.svg" alt="" className="send-icon" />
+                    </Link>
                   </div>
                 )}
 

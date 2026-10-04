@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, Link } from 'react-router-dom'
 import Navbar from '@components/product/Navbar'
 import Footer from '@components/common/Footer'
 import useArticlesStore from '@store/articlesStore'
@@ -219,6 +219,23 @@ const Article = () => {
                   dangerouslySetInnerHTML={{ __html: currentArticle.content }}
                 />
               )}
+
+              <aside className="article-cta" aria-label="Перейти в каталог">
+                <p className="article-cta-text">
+                  Подберите кресла ROBUSTINO для актового, зрительного или конференц-зала —
+                  смотрите модели в каталоге и реализованные объекты.
+                </p>
+                <div className="article-cta-links">
+                  <Link to="/products" className="link-block flex items-center gap-3">
+                    <span className="second-title">Смотреть каталог</span>
+                    <img src="/send.svg" alt="" className="send-icon" />
+                  </Link>
+                  <Link to="/projects" className="link-block flex items-center gap-3">
+                    <span className="second-title">Реализованные объекты</span>
+                    <img src="/send.svg" alt="" className="send-icon" />
+                  </Link>
+                </div>
+              </aside>
             </div>
           </div>
         </div>

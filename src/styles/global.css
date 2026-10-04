@@ -1710,6 +1710,16 @@ h1, h2, h3, h4, h5, h6 {
     cursor: pointer;
   }
 
+  button.project-modal-link {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+  }
+
   .project-modal-link:hover {
     opacity: 0.7;
   }
@@ -2094,6 +2104,38 @@ h1, h2, h3, h4, h5, h6 {
     opacity: 0; /* Начальное состояние - скрыт, будет появляться через анимацию */
   }
 
+  .article-cta {
+    max-width: 768px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(54, 54, 54, 0.12);
+  }
+
+  .article-cta-text {
+    font-family: 'Commissioner', sans-serif;
+    font-size: 18px;
+    font-weight: 450;
+    line-height: 1.45;
+    color: #363636;
+    margin: 0;
+  }
+
+  .article-cta-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px 32px;
+    align-items: center;
+  }
+
+  @media (max-width: 767px) {
+    .article-cta-text {
+      font-size: 16px;
+    }
+  }
+
   /* Article content headings */
   .article-content h1 {
     font-size: 36px;
@@ -2447,6 +2489,52 @@ h1, h2, h3, h4, h5, h6 {
     flex-direction: column;
     gap: 4px;
     margin-top: 8px;
+  }
+
+  .product-details-related-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+    font-family: 'Commissioner', sans-serif;
+    font-size: 14px;
+    font-weight: 450;
+    text-transform: uppercase;
+    text-decoration: none;
+    color: #fff;
+    transition: opacity 0.3s ease;
+  }
+
+  .product-details-related-link:hover {
+    opacity: 0.7;
+  }
+
+  .product-details-related-link .send-icon {
+    width: 14px;
+    height: 14px;
+    filter: brightness(0) invert(1);
+  }
+
+  .product-details-articles-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 8px;
+  }
+
+  .product-details-article-link {
+    font-family: 'Commissioner', sans-serif;
+    font-size: 14px;
+    font-weight: 450;
+    line-height: 1.35;
+    color: #fff;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    transition: opacity 0.3s ease;
+  }
+
+  .product-details-article-link:hover {
+    opacity: 0.7;
   }
 
   .product-details-links {

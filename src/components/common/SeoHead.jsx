@@ -16,12 +16,16 @@ export default function SeoHead({
   title = DEFAULT_TITLE,
   description = DEFAULT_DESCRIPTION,
   path = '/',
+  /** Absolute or path override for canonical / og:url (e.g. parent product). */
+  canonical,
   image,
   type = 'website',
   jsonLd,
   noindex = false,
 }) {
-  const url = absoluteUrl(path)
+  const url = canonical
+    ? (/^https?:\/\//i.test(canonical) ? canonical : absoluteUrl(canonical))
+    : absoluteUrl(path)
   const fullTitle = formatPageTitle(title)
   const ogImage = absoluteUrl(image || DEFAULT_OG_IMAGE)
   const ogType =
@@ -32,7 +36,7 @@ export default function SeoHead({
       <title>{fullTitle}</title>
       <meta name="description" content={description} />
       <link rel="canonical" href={url} />
-      {noindex && <meta name="robots" content="noindex, nofollow" />}
+      {noindex && <meta name="robots" content="noindex, follow" />}
 
       <meta property="og:site_name" content="ROBUSTINO" />
       <meta property="og:title" content={fullTitle} />

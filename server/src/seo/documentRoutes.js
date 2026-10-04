@@ -3,8 +3,10 @@ import express from 'express'
 import path from 'path'
 import { SPA_DIST } from './config.js'
 import { getHtmlForPath } from './cache.js'
+import { getActiveFaqPage } from './queries.js'
 import { sendSitemap, sendFeed } from './routes.js'
 import { fail } from '../errors.js'
+import { isUuid } from '../../../shared/slugify.js'
 
 const router = Router()
 
@@ -56,9 +58,26 @@ router.get('/article/:slug', (req, res) =>
   handleDocument(req, res, `/article/${req.params.slug}`)
 )
 
-router.get('/page/:id', (req, res) =>
-  handleDocument(req, res, `/page/${req.params.id}`)
-)
+router.get('/page/:slug', async (req, res) => {
+  try {
+    if (!wantsHtml(req)) return res.status(404).end()
+    const key = decodeURIComponent(req.params.slug)
+    const page = await getActiveFaqPage(key)
+    if (!page?.slug) {
+      return res
+        .status(404)
+        .type('html')
+        .send('<!doctype html><title>404</title><h1>Не найдено</h1>')
+    }
+    // Legacy /page/:uuid → /page/:slug
+    if (isUuid(key) && key !== page.slug) {
+      return res.redirect(301, `/page/${encodeURIComponent(page.slug)}`)
+    }
+    await sendSeoHtml(res, `/page/${page.slug}`)
+  } catch (e) {
+    fail(res, e)
+  }
+})
 
 /**
  * Mount static assets from SPA_DIST and SEO document routes.

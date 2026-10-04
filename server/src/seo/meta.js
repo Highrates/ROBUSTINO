@@ -9,8 +9,15 @@ import {
   formatPageTitle,
   resolveOgImage,
 } from './config.js'
+import { buildFaqPageEntity } from '../../../shared/faqJsonLd.js'
+import { listActiveFaqs } from './queries.js'
 
+/**
+ * Config-only children (show_only_on_main_model): noindex + canonical → parent.
+ * Keeps the URL usable for UX/shares, avoids near-duplicate indexation.
+ */
 function productMeta(product) {
+  const configOnly = !!product.show_only_on_main_model
   const title = formatPageTitle(
     product.seo_title?.trim() || `${product.name} — кресло ROBUSTINO`
   )
@@ -21,16 +28,28 @@ function productMeta(product) {
   const image =
     Array.isArray(product.images) && product.images[0] ? product.images[0] : null
   const path = `/product/${product.slug}`
-  return {
+  const canonicalPath =
+    configOnly && product.parent_slug
+      ? `/product/${product.parent_slug}`
+      : path
+
+  const meta = {
     title,
-    description,
+    description: configOnly ? truncateMeta(description, 140) : description,
     path,
-    canonical: absoluteUrl(path),
+    canonical: absoluteUrl(canonicalPath),
     image: resolveOgImage(image),
     type: 'product',
     h1: product.name,
-    bodyText: truncateMeta(product.description || product.full_description, 800),
-    jsonLd: {
+    bodyText: truncateMeta(
+      product.description || product.full_description,
+      configOnly ? 280 : 800
+    ),
+    noindex: configOnly,
+  }
+
+  if (!configOnly) {
+    meta.jsonLd = {
       '@context': 'https://schema.org',
       '@type': 'Product',
       name: product.name,
@@ -39,8 +58,10 @@ function productMeta(product) {
       brand: { '@type': 'Brand', name: 'ROBUSTINO' },
       sku: product.slug,
       url: absoluteUrl(path),
-    },
+    }
   }
+
+  return meta
 }
 
 function articleMeta(article) {
@@ -83,7 +104,7 @@ function articleMeta(article) {
 }
 
 function faqMeta(link) {
-  const path = `/page/${link.id}`
+  const path = `/page/${link.slug || link.id}`
   const description =
     truncateMeta(link.rich_text || link.page_content) || DEFAULT_DESCRIPTION
   return {
@@ -108,6 +129,60 @@ function staticPage(partial) {
   }
 }
 
+function homeBaseGraph() {
+  return [
+    {
+      '@type': 'Organization',
+      name: 'ROBUSTINO',
+      url: SITE_PUBLIC_URL,
+      logo: {
+        '@type': 'ImageObject',
+        url: absoluteUrl(ORGANIZATION_LOGO),
+        width: 512,
+        height: 512,
+      },
+    },
+    {
+      '@type': 'WebSite',
+      name: 'ROBUSTINO',
+      url: SITE_PUBLIC_URL,
+      description: DEFAULT_DESCRIPTION,
+    },
+  ]
+}
+
+/** Home meta + Organization/WebSite + FAQPage from active FAQs. */
+export async function getHomeMeta() {
+  const faqs = await listActiveFaqs()
+  const graph = homeBaseGraph()
+  const faqEntity = buildFaqPageEntity(faqs)
+  if (faqEntity) graph.push(faqEntity)
+
+  let updatedAt = null
+  for (const f of faqs) {
+    const t = f.updated_at || f.created_at
+    if (!t) continue
+    const ms = new Date(t).getTime()
+    if (!updatedAt || ms > new Date(updatedAt).getTime()) updatedAt = t
+  }
+
+  return {
+    ...staticPage({
+      title: DEFAULT_TITLE,
+      description: DEFAULT_DESCRIPTION,
+      path: '/',
+      canonical: SITE_PUBLIC_URL + '/',
+      h1: 'ROBUSTINO',
+      bodyText: DEFAULT_DESCRIPTION,
+    }),
+    jsonLd: {
+      '@context': 'https://schema.org',
+      '@graph': graph,
+    },
+    updatedAt,
+  }
+}
+
 const STATIC = {
   '/': staticPage({
     title: DEFAULT_TITLE,
@@ -118,25 +193,7 @@ const STATIC = {
     bodyText: DEFAULT_DESCRIPTION,
     jsonLd: {
       '@context': 'https://schema.org',
-      '@graph': [
-        {
-          '@type': 'Organization',
-          name: 'ROBUSTINO',
-          url: SITE_PUBLIC_URL,
-          logo: {
-            '@type': 'ImageObject',
-            url: absoluteUrl(ORGANIZATION_LOGO),
-            width: 512,
-            height: 512,
-          },
-        },
-        {
-          '@type': 'WebSite',
-          name: 'ROBUSTINO',
-          url: SITE_PUBLIC_URL,
-          description: DEFAULT_DESCRIPTION,
-        },
-      ],
+      '@graph': homeBaseGraph(),
     },
   }),
   '/products': staticPage({

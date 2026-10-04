@@ -5,6 +5,7 @@ import useFAQLinksStore from '@store/faqLinksStore'
 import RichTextEditor from '@components/admin/RichTextEditor'
 import FileUpload from '@components/admin/FileUpload'
 import { BUCKETS } from '@/config/buckets'
+import { slugify } from '@shared/slugify'
 
 const AdminFAQLinkForm = () => {
   const navigate = useNavigate()
@@ -15,11 +16,13 @@ const AdminFAQLinkForm = () => {
 
   const [formData, setFormData] = useState({
     name: '',
+    slug: '',
     document_url: null,
     rich_text: '',
     is_internal_page: false,
     page_content: '',
   })
+  const [slugTouched, setSlugTouched] = useState(false)
 
   const [errors, setErrors] = useState({})
   const [submitting, setSubmitting] = useState(false)
@@ -45,11 +48,13 @@ const AdminFAQLinkForm = () => {
     if (isEdit && currentLink) {
       setFormData({
         name: currentLink.name || '',
+        slug: currentLink.slug || '',
         document_url: currentLink.document_url || null,
         rich_text: currentLink.rich_text || '',
         is_internal_page: currentLink.is_internal_page || false,
         page_content: currentLink.page_content || '',
       })
+      setSlugTouched(!!currentLink.slug)
     }
   }, [isEdit, currentLink])
 
@@ -62,6 +67,11 @@ const AdminFAQLinkForm = () => {
 
     if (formData.is_internal_page && !formData.page_content?.trim()) {
       newErrors.page_content = 'Содержимое страницы обязательно для внутренних страниц'
+    }
+
+    if (formData.is_internal_page) {
+      const s = slugify(formData.slug || formData.name)
+      if (!s) newErrors.slug = 'Slug обязателен для внутренней страницы'
     }
 
     setErrors(newErrors)
@@ -84,6 +94,9 @@ const AdminFAQLinkForm = () => {
         rich_text: formData.is_internal_page ? null : (formData.rich_text || null),
         is_internal_page: formData.is_internal_page,
         page_content: formData.is_internal_page ? (formData.page_content || null) : null,
+        slug: formData.is_internal_page
+          ? slugify(formData.slug || formData.name)
+          : null,
       }
 
       if (isEdit) {
@@ -136,7 +149,17 @@ const AdminFAQLinkForm = () => {
             <input
               type="text"
               value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              onChange={(e) => {
+                const name = e.target.value
+                setFormData((prev) => ({
+                  ...prev,
+                  name,
+                  slug:
+                    prev.is_internal_page && !slugTouched
+                      ? slugify(name)
+                      : prev.slug,
+                }))
+              }}
               className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none ${
                 errors.name ? 'border-red-500' : 'border-gray-300'
               }`}
@@ -152,7 +175,16 @@ const AdminFAQLinkForm = () => {
               type="checkbox"
               id="is_internal_page"
               checked={formData.is_internal_page}
-              onChange={(e) => setFormData({ ...formData, is_internal_page: e.target.checked })}
+              onChange={(e) => {
+                const on = e.target.checked
+                setFormData((prev) => ({
+                  ...prev,
+                  is_internal_page: on,
+                  slug: on
+                    ? prev.slug || slugify(prev.name)
+                    : prev.slug,
+                }))
+              }}
               className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
             />
             <label htmlFor="is_internal_page" className="text-sm font-medium text-gray-700">
@@ -161,7 +193,32 @@ const AdminFAQLinkForm = () => {
           </div>
 
           {formData.is_internal_page ? (
-            /* Контент внутренней страницы */
+            <>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                URL slug <span className="text-red-500">*</span>
+              </label>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-500 whitespace-nowrap">/page/</span>
+                <input
+                  type="text"
+                  value={formData.slug}
+                  onChange={(e) => {
+                    setSlugTouched(true)
+                    setFormData({ ...formData, slug: slugify(e.target.value) })
+                  }}
+                  className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none ${
+                    errors.slug ? 'border-red-500' : 'border-gray-300'
+                  }`}
+                  placeholder="garantii-i-dostavka"
+                  required
+                />
+              </div>
+              {errors.slug && <p className="mt-1 text-sm text-red-600">{errors.slug}</p>}
+              <p className="mt-1 text-xs text-gray-500">
+                Латиница, без пробелов. Старые ссылки с UUID будут редиректить на этот slug.
+              </p>
+            </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Содержимое страницы <span className="text-red-500">*</span>
@@ -174,6 +231,7 @@ const AdminFAQLinkForm = () => {
               />
               {errors.page_content && <p className="mt-1 text-sm text-red-600">{errors.page_content}</p>}
             </div>
+            </>
           ) : (
             <>
               {/* Документ */}

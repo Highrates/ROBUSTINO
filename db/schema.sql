@@ -153,6 +153,7 @@ CREATE TABLE public.faq (
 CREATE TABLE public.faq_links (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   name text NOT NULL,
+  slug text,
   document_url text,
   rich_text text,
   display_order integer DEFAULT 0,
@@ -210,6 +211,9 @@ CREATE INDEX IF NOT EXISTS idx_product_projects_project ON public.product_projec
 
 CREATE INDEX IF NOT EXISTS idx_faq_active_order ON public.faq (is_active, display_order);
 CREATE INDEX IF NOT EXISTS idx_faq_links_active_order ON public.faq_links (is_active, display_order);
+CREATE UNIQUE INDEX IF NOT EXISTS faq_links_slug_key
+  ON public.faq_links (slug)
+  WHERE slug IS NOT NULL;
 
 CREATE INDEX IF NOT EXISTS idx_upholstery_variants_collection
   ON public.upholstery_variants (collection_id);

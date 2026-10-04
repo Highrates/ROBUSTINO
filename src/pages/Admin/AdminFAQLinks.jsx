@@ -192,6 +192,19 @@ const AdminFAQLinks = () => {
                                 <span className="inline-block px-2 py-1 text-xs bg-gray-200 text-gray-600 rounded">Неактивна</span>
                               )}
                             </div>
+                            {link.is_internal_page && link.slug && (
+                              <p className="text-sm text-gray-600 mb-1">
+                                URL:{' '}
+                                <a
+                                  href={`/page/${link.slug}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-blue-600 hover:underline"
+                                >
+                                  /page/{link.slug}
+                                </a>
+                              </p>
+                            )}
                             {link.document_url && !link.is_internal_page && (
                               <p className="text-sm text-gray-600 mb-1">
                                 Документ: <a href={link.document_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Открыть</a>
@@ -200,8 +213,8 @@ const AdminFAQLinks = () => {
                             {link.rich_text && !link.is_internal_page && (
                               <div className="text-sm text-gray-600 mt-1" dangerouslySetInnerHTML={{ __html: link.rich_text.substring(0, 100) + '...' }} />
                             )}
-                            {link.is_internal_page && link.page_content && (
-                              <p className="text-sm text-gray-500 mt-1">Внутренняя страница с контентом</p>
+                            {link.is_internal_page && link.page_content && !link.slug && (
+                              <p className="text-sm text-amber-600 mt-1">Нет slug — сохраните страницу в редакторе</p>
                             )}
                           </div>
                         </div>

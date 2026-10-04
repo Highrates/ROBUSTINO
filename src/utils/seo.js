@@ -1,3 +1,5 @@
+import { buildFaqPageEntity } from '@shared/faqJsonLd'
+
 /** Public site origin (browser). Override with VITE_SITE_URL if needed. */
 export const SITE_URL = (
   typeof import.meta !== 'undefined' && import.meta.env?.VITE_SITE_URL
@@ -37,7 +39,11 @@ export function absoluteUrl(pathOrUrl) {
   return `${SITE_URL}${path}`
 }
 
-export function productSeo(product) {
+/**
+ * @param {object} product
+ * @param {{ parentSlug?: string }} [opts] — fallback if API has no parent_slug
+ */
+export function productSeo(product, opts = {}) {
   if (!product) {
     return {
       title: DEFAULT_TITLE,
@@ -46,22 +52,40 @@ export function productSeo(product) {
       image: DEFAULT_OG_IMAGE,
     }
   }
+  const configOnly = !!product.show_only_on_main_model
+  const parentSlug = opts.parentSlug || product.parent_slug || null
+  const path = `/product/${product.slug}`
+  const canonicalPath =
+    configOnly && parentSlug ? `/product/${parentSlug}` : path
+
   const title = formatPageTitle(
     product.seo_title?.trim() || `${product.name} — кресло ROBUSTINO`
   )
-  const description =
-    product.seo_description?.trim() ||
-    truncateMeta(product.description) ||
-    DEFAULT_DESCRIPTION
+  const description = configOnly
+    ? truncateMeta(
+        product.seo_description?.trim() ||
+          product.description ||
+          DEFAULT_DESCRIPTION,
+        140
+      )
+    : product.seo_description?.trim() ||
+      truncateMeta(product.description) ||
+      DEFAULT_DESCRIPTION
   const image =
     (Array.isArray(product.images) && product.images[0]) || DEFAULT_OG_IMAGE
-  return {
+
+  const seo = {
     title,
     description,
-    path: `/product/${product.slug}`,
+    path,
+    canonical: absoluteUrl(canonicalPath),
     image,
     type: 'product',
-    jsonLd: {
+    noindex: configOnly,
+  }
+
+  if (!configOnly) {
+    seo.jsonLd = {
       '@context': 'https://schema.org',
       '@type': 'Product',
       name: product.name,
@@ -69,9 +93,11 @@ export function productSeo(product) {
       image: [absoluteUrl(image)],
       brand: { '@type': 'Brand', name: 'ROBUSTINO' },
       sku: product.slug,
-      url: absoluteUrl(`/product/${product.slug}`),
-    },
+      url: absoluteUrl(path),
+    }
   }
+
+  return seo
 }
 
 export function articleSeo(article) {
@@ -121,17 +147,44 @@ export function articleSeo(article) {
 export function pageSeo(link) {
   const name = link?.name || 'Страница'
   const description = truncateMeta(link?.rich_text || link?.page_content) || DEFAULT_DESCRIPTION
+  const key = link?.slug || link?.id
   return {
     title: formatPageTitle(name),
     description,
-    path: link?.id ? `/page/${link.id}` : '/',
+    path: key ? `/page/${key}` : '/',
     image: DEFAULT_OG_IMAGE,
     type: 'website',
   }
 }
 
-export const STATIC_PAGES = {
-  home: {
+function homeBaseGraph() {
+  return [
+    {
+      '@type': 'Organization',
+      name: 'ROBUSTINO',
+      url: SITE_URL,
+      logo: {
+        '@type': 'ImageObject',
+        url: absoluteUrl(ORGANIZATION_LOGO),
+        width: 512,
+        height: 512,
+      },
+    },
+    {
+      '@type': 'WebSite',
+      name: 'ROBUSTINO',
+      url: SITE_URL,
+      description: DEFAULT_DESCRIPTION,
+    },
+  ]
+}
+
+/** Home SeoHead props; merges FAQPage into @graph when FAQs are loaded. */
+export function buildHomeSeo(faqs = []) {
+  const graph = homeBaseGraph()
+  const faqEntity = buildFaqPageEntity(faqs)
+  if (faqEntity) graph.push(faqEntity)
+  return {
     title: DEFAULT_TITLE,
     description: DEFAULT_DESCRIPTION,
     path: '/',
@@ -139,27 +192,13 @@ export const STATIC_PAGES = {
     type: 'website',
     jsonLd: {
       '@context': 'https://schema.org',
-      '@graph': [
-        {
-          '@type': 'Organization',
-          name: 'ROBUSTINO',
-          url: SITE_URL,
-          logo: {
-            '@type': 'ImageObject',
-            url: absoluteUrl(ORGANIZATION_LOGO),
-            width: 512,
-            height: 512,
-          },
-        },
-        {
-          '@type': 'WebSite',
-          name: 'ROBUSTINO',
-          url: SITE_URL,
-          description: DEFAULT_DESCRIPTION,
-        },
-      ],
+      '@graph': graph,
     },
-  },
+  }
+}
+
+export const STATIC_PAGES = {
+  home: buildHomeSeo(),
   products: {
     title: formatPageTitle('Каталог кресел'),
     description:

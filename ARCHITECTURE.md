@@ -408,6 +408,10 @@ SPA-хиты: `src/components/common/YandexMetrika.jsx`. Цели (`reachGoal`):
 - Логотип Organization: `/logo-org.png` (512×512); OG default: `/hero-Archi.png`
 - nginx-фрагмент: `deploy/nginx-seo.conf.example`
 - Прогрев кэша: `node server/scripts/warm-seo-cache.mjs` или `POST /api/seo/warm-cache` (auth); invalidate/warm на publish/delete/slug и FAQ pages
+- Config-only товары (`show_only_on_main_model`): вне sitemap, `noindex, follow`, canonical → parent (если есть), без Product JSON-LD
+- Перелинковка: product → `/projects` + статьи; article → CTA в `/products` и `/projects`
+- FAQ internal pages: `/page/:slug` (миграция `20261004_faq_links_slug.sql`); UUID → 301 на slug
+- Главная: JSON-LD `@graph` включает `FAQPage` из активных FAQ (клиент + SEO-shell; warm `/` при CRUD FAQ)
 
 ---
 
@@ -421,7 +425,7 @@ SPA-хиты: `src/components/common/YandexMetrika.jsx`. Цели (`reachGoal`):
 - `/article/:id` - Страница статьи
 - `/projects` - Все проекты
 - `/about` - О компании
-- `/page/:id` - Динамические страницы для FAQ ссылок
+- `/page/:slug` - Динамические страницы FAQ (`faq_links.slug`; UUID редиректит на slug)
 
 ### Админ роуты (защищенные)
 - `/admin/login` - Вход в админ панель

@@ -3,9 +3,14 @@ import { query } from '../db.js'
 import { optionalAuth, requireAuth, isAdmin } from '../auth.js'
 import { fail } from '../errors.js'
 import { nextDisplayOrder, updateOrder, pick, buildInsert, buildUpdate } from '../util.js'
+import { refreshPath } from '../seo/cache.js'
 
 const router = Router()
 const FIELDS = ['question', 'answer', 'display_order', 'is_active']
+
+function warmHomeSeo() {
+  refreshPath('/').catch((e) => console.error('[seo-cache] home faq warm', e.message))
+}
 
 router.get('/', optionalAuth, async (req, res) => {
   try {
@@ -24,6 +29,7 @@ router.get('/', optionalAuth, async (req, res) => {
 router.put('/order', requireAuth, async (req, res) => {
   try {
     await updateOrder('faq', req.body?.orderUpdates || req.body)
+    warmHomeSeo()
     res.json({ ok: true })
   } catch (e) {
     fail(res, e)
@@ -47,6 +53,7 @@ router.post('/', requireAuth, async (req, res) => {
     if (data.is_active == null) data.is_active = true
     const ins = buildInsert('faq', data)
     const { rows } = await query(ins.text, ins.values)
+    warmHomeSeo()
     res.status(201).json(rows[0])
   } catch (e) {
     fail(res, e)
@@ -59,6 +66,7 @@ router.patch('/:id', requireAuth, async (req, res) => {
     if (!upd) return res.status(400).json({ error: 'Нет данных' })
     const { rows } = await query(upd.text, upd.values)
     if (!rows[0]) return res.status(404).json({ error: 'Не найден' })
+    warmHomeSeo()
     res.json(rows[0])
   } catch (e) {
     fail(res, e)
@@ -69,6 +77,7 @@ router.delete('/:id', requireAuth, async (req, res) => {
   try {
     const { rowCount } = await query('DELETE FROM faq WHERE id = $1', [req.params.id])
     if (!rowCount) return res.status(404).json({ error: 'Не найден' })
+    warmHomeSeo()
     res.json({ ok: true })
   } catch (e) {
     fail(res, e)

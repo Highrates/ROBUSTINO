@@ -51,14 +51,14 @@ export async function buildSitemapXml() {
         priority: '0.6',
       })
     ),
-    ...pages.map((p) =>
-      urlEntry({
-        loc: `/page/${p.id}`,
-        lastmod: p.updated_at,
-        changefreq: 'monthly',
-        priority: '0.4',
-      })
-    ),
+      ...pages.map((p) =>
+        urlEntry({
+          loc: `/page/${p.slug || p.id}`,
+          lastmod: p.updated_at,
+          changefreq: 'monthly',
+          priority: '0.4',
+        })
+      ),
   ]
 
   return `<?xml version="1.0" encoding="UTF-8"?>

@@ -1,18 +1,19 @@
 import { useEffect, useRef } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, Navigate } from 'react-router-dom'
 import useFAQLinksStore from '@store/faqLinksStore'
 import Navbar from '@components/product/Navbar'
 import Footer from '@components/common/Footer'
 import Loader from '@components/common/Loader'
 import SeoHead from '@components/common/SeoHead'
 import { pageSeo } from '@/utils/seo'
+import { isUuid, faqPagePath } from '@shared/slugify'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 
 gsap.registerPlugin(ScrollTrigger)
 
 const Page = () => {
-  const { id } = useParams()
+  const { slug } = useParams()
   const { fetchFAQLink, currentLink, loading, error } = useFAQLinksStore()
 
   const pageSectionRef = useRef(null)
@@ -28,10 +29,10 @@ const Page = () => {
   }, [])
 
   useEffect(() => {
-    if (id) {
-      fetchFAQLink(id)
+    if (slug) {
+      fetchFAQLink(slug)
     }
-  }, [id, fetchFAQLink])
+  }, [slug, fetchFAQLink])
 
   // Анимация появления элементов страницы
   useEffect(() => {
@@ -87,7 +88,7 @@ const Page = () => {
   if (loading) {
     return (
       <div className="article-page relative bg-main-bg">
-        <SeoHead title="Загрузка — ROBUSTINO" path={`/page/${id || ''}`} />
+        <SeoHead title="Загрузка — ROBUSTINO" path={`/page/${slug || ''}`} />
         <Navbar />
         <div className="flex justify-center items-center py-20">
           <Loader />
@@ -127,6 +128,16 @@ const Page = () => {
         <Footer />
       </div>
     )
+  }
+
+  // Legacy UUID URL → canonical slug
+  if (
+    currentLink.slug &&
+    slug &&
+    isUuid(slug) &&
+    slug !== currentLink.slug
+  ) {
+    return <Navigate to={faqPagePath(currentLink)} replace />
   }
 
   const pageDate = currentLink.created_at

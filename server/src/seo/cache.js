@@ -2,7 +2,7 @@ import fs from 'fs/promises'
 import path from 'path'
 import { SEO_CACHE_DIR } from './config.js'
 import { buildSeoHtml } from './shell.js'
-import { STATIC, productMeta, articleMeta, faqMeta } from './meta.js'
+import { STATIC, productMeta, articleMeta, faqMeta, getHomeMeta } from './meta.js'
 import {
   getPublishedProductBySlug,
   getPublishedArticleBySlug,
@@ -63,6 +63,10 @@ export async function invalidateCachedPaths(urlPaths) {
  * Dynamic entities include `updatedAt` for cache freshness checks.
  */
 export async function resolveMetaForPath(urlPath) {
+  if (urlPath === '/') {
+    return getHomeMeta()
+  }
+
   if (STATIC[urlPath]) return { ...STATIC[urlPath], updatedAt: null }
 
   let m = urlPath.match(/^\/product\/([^/]+)$/)
@@ -182,10 +186,16 @@ export async function syncEntitySeoCache({
 }
 
 /** FAQ internal page: warm when active+internal, else drop. */
-export async function syncFaqSeoCache(row) {
+export async function syncFaqSeoCache(row, { oldSlug, oldId } = {}) {
   if (!row?.id) return null
-  const pagePath = `/page/${row.id}`
-  const live = row.is_active !== false && row.is_internal_page === true
+  const pagePath = row.slug ? `/page/${row.slug}` : `/page/${row.id}`
+  const drop = []
+  if (oldSlug && oldSlug !== row.slug) drop.push(`/page/${oldSlug}`)
+  if (oldId) drop.push(`/page/${oldId}`)
+  if (drop.length) await invalidateCachedPaths(drop)
+
+  const live =
+    row.is_active !== false && row.is_internal_page === true && !!row.slug
   if (live) return refreshPath(pagePath)
   await invalidateCachedPath(pagePath)
   return null

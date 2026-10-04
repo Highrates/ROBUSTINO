@@ -74,12 +74,20 @@ router.put('/order', requireAuth, async (req, res) => {
 /**
  * Lookup by slug OR private_token (admin shares /product/{private_token} for link_only).
  */
+const PRODUCT_WITH_PARENT_SQL = `
+  SELECT p.*,
+         parent.slug AS parent_slug
+  FROM products p
+  LEFT JOIN products parent
+    ON parent.id = p.parent_product_id
+   AND parent.status = 'published'`
+
 router.get('/slug/:slug', optionalAuth, async (req, res) => {
   try {
     const key = req.params.slug
     const { rows } = await query(
-      `SELECT * FROM products
-       WHERE slug = $1 OR private_token = $1
+      `${PRODUCT_WITH_PARENT_SQL}
+       WHERE p.slug = $1 OR p.private_token = $1
        LIMIT 1`,
       [key]
     )
@@ -91,7 +99,12 @@ router.get('/slug/:slug', optionalAuth, async (req, res) => {
 
 router.get('/:id', optionalAuth, async (req, res) => {
   try {
-    const { rows } = await query('SELECT * FROM products WHERE id = $1 LIMIT 1', [req.params.id])
+    const { rows } = await query(
+      `${PRODUCT_WITH_PARENT_SQL}
+       WHERE p.id = $1
+       LIMIT 1`,
+      [req.params.id]
+    )
     respondProduct(req, res, rows[0], req.query.token || null)
   } catch (e) {
     fail(res, e)

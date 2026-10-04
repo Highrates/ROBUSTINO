@@ -67,6 +67,9 @@ export async function buildSeoHtml(meta) {
 
   html = html.replace(/<title>[^<]*<\/title>/i, `<title>${escapeHtml(title)}</title>`)
   html = upsertMeta(html, 'name', 'description', description)
+  if (meta.noindex) {
+    html = upsertMeta(html, 'name', 'robots', 'noindex, follow')
+  }
   if (canonical) html = upsertLink(html, 'canonical', canonical)
 
   html = upsertMeta(html, 'property', 'og:site_name', 'ROBUSTINO')
