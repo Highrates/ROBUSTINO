@@ -44,7 +44,8 @@ export function getNextCatalogProduct(currentProduct, catalogProducts) {
 
 export function getProductPath(product) {
   if (!product) return null
-  if (product.slug) return `/product/${product.slug}`
-  if (product.id) return `/product/${product.id}`
+  // Encode so Cyrillic / mixed slugs work in <Link> and location
+  if (product.slug) return `/product/${encodeURIComponent(product.slug)}`
+  if (product.id) return `/product/${encodeURIComponent(product.id)}`
   return null
 }

@@ -20,8 +20,18 @@ import Loader from '@components/common/Loader'
 // Register ScrollTrigger plugin
 gsap.registerPlugin(ScrollTrigger)
 
+function decodeRouteSlug(raw) {
+  if (!raw) return raw
+  try {
+    return decodeURIComponent(raw)
+  } catch {
+    return raw
+  }
+}
+
 const Product = () => {
-  const { slug } = useParams()
+  const { slug: slugParam } = useParams()
+  const slug = decodeRouteSlug(slugParam)
   const navigate = useNavigate()
   const { currentProduct, products, loading, error, fetchProductBySlug, fetchProducts } = useProductsStore()
   const { variants: upholsteryVariants, fetchVariants } = useUpholsteryStore()
@@ -774,10 +784,15 @@ const Product = () => {
 
                 {/* Следующая модель */}
                 {nextProductPath ? (
-                <Link 
+                <Link
                     to={nextProductPath}
                   className="product-nav-link text-[14px] uppercase text-main-text hover:text-second-text transition-colors"
                   aria-label={`Следующая модель: ${nextProduct?.name || ''}`}
+                  onClick={(e) => {
+                    // Belt-and-suspenders: ensure navigation even if Link hit-testing flakes
+                    e.preventDefault()
+                    navigate(nextProductPath)
+                  }}
                 >
                   <span className="product-nav-link-full">Следующая модель</span>
                   <span className="product-nav-link-short">Далее</span>

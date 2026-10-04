@@ -2357,6 +2357,7 @@ h1, h2, h3, h4, h5, h6 {
 
   .product-3d-scene {
     height: 100%;
+    z-index: 0;
   }
 
   .product-content-top {
@@ -2368,9 +2369,12 @@ h1, h2, h3, h4, h5, h6 {
     left: 0;
     right: 0;
     width: 100%;
-    z-index: 10;
+    z-index: 20;
+    /* Empty overlay area must not block OrbitControls; links re-enable below */
+    pointer-events: none;
   }
 
+  /* Avoid display:contents — breaks hit-testing for «Следующая модель» in some browsers */
   .product-content-nav {
     display: contents;
   }
@@ -2379,6 +2383,7 @@ h1, h2, h3, h4, h5, h6 {
     order: 2;
     flex: 1;
     align-items: center;
+    pointer-events: auto;
   }
 
   .product-content-nav > .product-nav-link:first-child,
@@ -2394,8 +2399,12 @@ h1, h2, h3, h4, h5, h6 {
 
   .product-nav-link {
     font-weight: 450;
-    padding: 0;
+    padding: 8px 4px;
     text-decoration: none;
+    pointer-events: auto;
+    position: relative;
+    z-index: 21;
+    cursor: pointer;
   }
 
   .product-nav-link-short {
