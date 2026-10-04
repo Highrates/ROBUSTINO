@@ -13,15 +13,15 @@ const useProductsStore = create((set, get) => ({
   loading: false,
   error: null,
   lastFetched: null,
-  fetchAbortFlag: null,
+  listFetchAbortFlag: null,
+  detailFetchAbortFlag: null,
 
   // Fetch all products с умным кэшированием и stale-while-revalidate
   fetchProducts: async (force = false) => {
     const state = get()
     
-    // Отменяем предыдущий запрос если есть
-    if (state.fetchAbortFlag) {
-      state.fetchAbortFlag.cancelled = true
+    if (state.listFetchAbortFlag) {
+      state.listFetchAbortFlag.cancelled = true
     }
     
     // Проверяем свежесть кэша
@@ -39,17 +39,16 @@ const useProductsStore = create((set, get) => ({
     const showLoader = !hasData // Loader только если нет данных вообще
     
     const abortFlag = { cancelled: false }
-    set({ loading: showLoader, error: null, fetchAbortFlag: abortFlag })
+    set({ loading: showLoader, error: null, listFetchAbortFlag: abortFlag })
 
     try {
       const products = await getProducts()
       
-      // Проверяем, не был ли запрос отменен
       if (abortFlag.cancelled) {
         return
       }
 
-      set({ products, loading: false, lastFetched: Date.now(), fetchAbortFlag: null })
+      set({ products, loading: false, lastFetched: Date.now(), listFetchAbortFlag: null })
       console.log('[Products] Data refreshed from server')
     } catch (error) {
       // Игнорируем ошибки отмененных запросов
@@ -60,9 +59,9 @@ const useProductsStore = create((set, get) => ({
       // Если есть старые данные - оставляем их, только логируем ошибку
       if (hasData) {
         console.warn('[Products] Failed to refresh, using stale data:', error.message)
-        set({ loading: false, fetchAbortFlag: null })
+        set({ loading: false, listFetchAbortFlag: null })
       } else {
-        set({ error: error.message, loading: false, fetchAbortFlag: null })
+        set({ error: error.message, loading: false, listFetchAbortFlag: null })
       }
     }
   },
@@ -73,12 +72,12 @@ const useProductsStore = create((set, get) => ({
     
     set({ currentProduct: null })
     
-    if (state.fetchAbortFlag) {
-      state.fetchAbortFlag.cancelled = true
+    if (state.detailFetchAbortFlag) {
+      state.detailFetchAbortFlag.cancelled = true
     }
 
     const abortFlag = { cancelled: false }
-    set({ loading: true, error: null, fetchAbortFlag: abortFlag })
+    set({ loading: true, error: null, detailFetchAbortFlag: abortFlag })
 
     try {
       const product = await getProduct(id, options)
@@ -87,7 +86,7 @@ const useProductsStore = create((set, get) => ({
         return
       }
 
-      set({ currentProduct: product, loading: false, fetchAbortFlag: null })
+      set({ currentProduct: product, loading: false, detailFetchAbortFlag: null })
     } catch (error) {
       if (abortFlag.cancelled) {
         return
@@ -95,7 +94,7 @@ const useProductsStore = create((set, get) => ({
       set({ 
         error: error.message || 'Продукт не найден', 
         loading: false, 
-        fetchAbortFlag: null,
+        detailFetchAbortFlag: null,
         currentProduct: null 
       })
     }
@@ -107,17 +106,14 @@ const useProductsStore = create((set, get) => ({
   fetchProductBySlug: async (slug) => {
     const state = get()
     
-    // Очищаем предыдущий продукт перед загрузкой нового
     set({ currentProduct: null })
     
-    // Отменяем предыдущий запрос, если он еще выполняется
-    if (state.fetchAbortFlag) {
-      state.fetchAbortFlag.cancelled = true
+    if (state.detailFetchAbortFlag) {
+      state.detailFetchAbortFlag.cancelled = true
     }
 
-    // Создаем новый флаг отмены
     const abortFlag = { cancelled: false }
-    set({ loading: true, error: null, fetchAbortFlag: abortFlag })
+    set({ loading: true, error: null, detailFetchAbortFlag: abortFlag })
 
     try {
       const product = await getProductBySlug(slug)
@@ -127,16 +123,15 @@ const useProductsStore = create((set, get) => ({
         return
       }
 
-      set({ currentProduct: product, loading: false, fetchAbortFlag: null })
+      set({ currentProduct: product, loading: false, detailFetchAbortFlag: null })
     } catch (error) {
-      // Игнорируем ошибки отмененных запросов
       if (abortFlag.cancelled) {
         return
       }
       set({ 
         error: error.message || 'Продукт не найден', 
         loading: false, 
-        fetchAbortFlag: null,
+        detailFetchAbortFlag: null,
         currentProduct: null 
       })
     }

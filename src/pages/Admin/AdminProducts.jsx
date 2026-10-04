@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import AdminLayout from '@components/admin/AdminLayout'
 import useProductsStore from '@store/productsStore'
 
 const AdminProducts = () => {
+  const navigate = useNavigate()
   const { products, loading, error, fetchProducts, clearError, removeProduct, setProductsOptimistic, rollbackProducts, updateProductsOrder } = useProductsStore()
   const [deletingId, setDeletingId] = useState(null)
   const [draggedId, setDraggedId] = useState(null)
@@ -186,21 +187,29 @@ const AdminProducts = () => {
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {products.map((product) => (
-                      <tr 
-                        key={product.id} 
-                        draggable
-                        onDragStart={(e) => handleDragStart(e, product.id)}
-                        onDragEnd={handleDragEnd}
-                        onDragOver={(e) => handleDragOver(e, product.id)}
-                        onDragLeave={handleDragLeave}
-                        onDrop={(e) => handleDrop(e, product.id)}
+                      <tr
+                        key={product.id}
+                        onClick={() => {
+                          if (!isReordering && !draggedId) {
+                            navigate(`/admin/products/${product.id}/edit`)
+                          }
+                        }}
                         className={`hover:bg-gray-50 transition-colors ${
                           draggedId === product.id ? 'opacity-50' : ''
                         } ${
                           dragOverId === product.id ? 'bg-blue-50 border-t-2 border-b-2 border-blue-400' : ''
-                        } ${isReordering ? 'cursor-wait' : 'cursor-move'}`}
+                        } ${isReordering ? 'cursor-wait' : 'cursor-pointer'}`}
                       >
-                        <td className="px-4 py-4 whitespace-nowrap">
+                        <td
+                          className="px-4 py-4 whitespace-nowrap cursor-grab active:cursor-grabbing"
+                          draggable
+                          onClick={(e) => e.stopPropagation()}
+                          onDragStart={(e) => handleDragStart(e, product.id)}
+                          onDragEnd={handleDragEnd}
+                          onDragOver={(e) => handleDragOver(e, product.id)}
+                          onDragLeave={handleDragLeave}
+                          onDrop={(e) => handleDrop(e, product.id)}
+                        >
                           <div className="flex items-center justify-center text-gray-400 hover:text-gray-600">
                             <svg 
                               className="w-5 h-5" 
@@ -246,15 +255,11 @@ const AdminProducts = () => {
                             ? new Date(product.created_at).toLocaleDateString('ru-RU')
                             : '-'}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <div className="flex justify-end space-x-4">
-                            <Link
-                              to={`/admin/products/${product.id}/edit`}
-                              className="text-blue-600 hover:text-blue-900"
-                              onClick={(e) => isReordering && e.preventDefault()}
-                            >
-                              Редактировать
-                            </Link>
+                        <td
+                          className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <div className="flex justify-end">
                             <button
                               onClick={() => handleDelete(product.id, product.name)}
                               disabled={deletingId === product.id || isReordering}

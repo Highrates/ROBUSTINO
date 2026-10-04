@@ -140,9 +140,10 @@ const Product = () => {
     if (!slug) return
 
     // Сначала проверяем, есть ли продукт в уже загруженном списке по slug
-    const productFromList = products.find(p => p.slug === slug && p.status === 'published' && !p.show_only_on_main_model)
-    
-    // Загружаем продукт только если его нет в списке или если это другой продукт
+    const productFromList = products.find(
+      (p) => p.slug === slug && p.status === 'published'
+    )
+
     if (!productFromList || currentProduct?.slug !== slug) {
       fetchProductBySlug(slug).catch(() => {
         // Ошибка уже обрабатывается в store
@@ -524,8 +525,12 @@ const Product = () => {
 
   // Основная модель — родительский товар, если текущий продукт является конфигурацией
   const parentProduct = useMemo(() => {
-    if (!currentProduct?.parent_product_id || !products?.length) return null
-    return products.find(p => p?.id === currentProduct.parent_product_id && p?.status === 'published') || null
+    if (!currentProduct?.parent_product_id) return null
+    return (
+      products.find(
+        (p) => p?.id === currentProduct.parent_product_id && p?.status === 'published'
+      ) || null
+    )
   }, [currentProduct?.parent_product_id, products])
 
   const sortByDisplayOrder = (a, b) => {
@@ -537,15 +542,24 @@ const Product = () => {
 
   // Список для блока «Конфигурации модели»: родитель + все конфигурации (включая текущую), как на странице дочернего товара
   const configProductsForBlock = useMemo(() => {
-    if (!products?.length || !currentProduct?.id) return []
+    if (!currentProduct?.id) return []
+    const publishedChildren = (products || []).filter(
+      (p) => p?.parent_product_id === currentProduct.id && p?.status === 'published'
+    )
+
     if (parentProduct) {
-      const siblings = products
-        .filter(p => p?.parent_product_id === parentProduct.id && p?.status === 'published')
+      const siblings = (products || [])
+        .filter((p) => p?.parent_product_id === parentProduct.id && p?.status === 'published')
         .sort(sortByDisplayOrder)
-      return [parentProduct, ...siblings]
+      const hasCurrent = siblings.some((p) => p.id === currentProduct.id)
+      const withCurrent = hasCurrent ? siblings : [...siblings, currentProduct].sort(sortByDisplayOrder)
+      return [parentProduct, ...withCurrent]
     }
-    if (modelConfigurations.length === 0) return []
-    return [currentProduct, ...modelConfigurations]
+
+    if (publishedChildren.length === 0 && modelConfigurations.length === 0) return []
+    const children =
+      modelConfigurations.length > 0 ? modelConfigurations : publishedChildren.sort(sortByDisplayOrder)
+    return [currentProduct, ...children]
   }, [parentProduct, modelConfigurations, products, currentProduct])
 
   // Галерея: фото товара (со 2-го) + изображения из привязанных проектов
