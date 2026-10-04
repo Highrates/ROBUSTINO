@@ -50,6 +50,7 @@ CREATE TABLE public.products (
   show_only_on_main_model boolean NOT NULL DEFAULT false,
   document_url text,
   parent_product_id uuid,
+  showroom_upholstery_variant_id uuid,
   seo_title text,
   seo_description text,
   feed_price numeric,
@@ -199,6 +200,15 @@ CREATE TABLE public.upholstery_variants (
 CREATE INDEX IF NOT EXISTS idx_products_status ON public.products (status);
 CREATE INDEX IF NOT EXISTS idx_products_parent ON public.products (parent_product_id);
 CREATE INDEX IF NOT EXISTS idx_products_display_order ON public.products (display_order);
+
+ALTER TABLE public.products
+  DROP CONSTRAINT IF EXISTS products_showroom_upholstery_variant_id_fkey;
+ALTER TABLE public.products
+  ADD CONSTRAINT products_showroom_upholstery_variant_id_fkey
+  FOREIGN KEY (showroom_upholstery_variant_id) REFERENCES public.upholstery_variants(id);
+
+CREATE INDEX IF NOT EXISTS idx_products_showroom_upholstery
+  ON public.products (showroom_upholstery_variant_id);
 
 CREATE INDEX IF NOT EXISTS idx_articles_status ON public.articles (status);
 CREATE INDEX IF NOT EXISTS idx_articles_display_order ON public.articles (display_order);

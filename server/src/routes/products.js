@@ -12,6 +12,7 @@ const FIELDS = [
   'delivery_time', 'volume_m3', 'weight_kg', 'in_stock', 'model_url',
   'model_max_url', 'additional_models', 'images', 'specifications', 'status',
   'private_token', 'show_only_on_main_model', 'document_url', 'parent_product_id',
+  'showroom_upholstery_variant_id',
   'display_order', 'seo_title', 'seo_description', 'feed_price',
 ]
 

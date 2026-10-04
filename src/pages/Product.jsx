@@ -528,22 +528,25 @@ const Product = () => {
     return products.find(p => p?.id === currentProduct.parent_product_id && p?.status === 'published') || null
   }, [currentProduct?.parent_product_id, products])
 
-  // Список для блока «Конфигурации модели»: на странице основной модели — её конфигурации; на странице конфигурации — основная модель и все её конфигурации
+  const sortByDisplayOrder = (a, b) => {
+    if (a.display_order != null && b.display_order != null) return a.display_order - b.display_order
+    if (a.display_order != null) return -1
+    if (b.display_order != null) return 1
+    return 0
+  }
+
+  // Список для блока «Конфигурации модели»: родитель + все конфигурации (включая текущую), как на странице дочернего товара
   const configProductsForBlock = useMemo(() => {
-    if (!products?.length) return []
+    if (!products?.length || !currentProduct?.id) return []
     if (parentProduct) {
       const siblings = products
         .filter(p => p?.parent_product_id === parentProduct.id && p?.status === 'published')
-        .sort((a, b) => {
-          if (a.display_order != null && b.display_order != null) return a.display_order - b.display_order
-          if (a.display_order != null) return -1
-          if (b.display_order != null) return 1
-          return 0
-        })
+        .sort(sortByDisplayOrder)
       return [parentProduct, ...siblings]
     }
-    return modelConfigurations
-  }, [parentProduct, modelConfigurations, products])
+    if (modelConfigurations.length === 0) return []
+    return [currentProduct, ...modelConfigurations]
+  }, [parentProduct, modelConfigurations, products, currentProduct])
 
   // Галерея: фото товара (со 2-го) + изображения из привязанных проектов
   const galleryImages = useMemo(() => {
@@ -674,14 +677,11 @@ const Product = () => {
     }
   }, [nextProduct?.model_url, currentProduct?.model_url])
   
-  // Массив материалов для данного продукта
-  const materials = [
-    '/materials/material1.jpg',
-    '/materials/material2.jpg',
-    '/materials/material3.jpg',
-  ]
-  
-  const currentMaterialIndex = 0 // Индекс текущего материала
+  const showroomUpholstery = useMemo(() => {
+    const variantId = currentProduct?.showroom_upholstery_variant_id
+    if (!variantId || !upholsteryVariants?.length) return null
+    return upholsteryVariants.find((v) => v.id === variantId) || null
+  }, [currentProduct?.showroom_upholstery_variant_id, upholsteryVariants])
 
   // Функции зума
   const handleZoomIn = () => {
@@ -819,39 +819,29 @@ const Product = () => {
                 </p>
                 )}
 
-                {/* Product Materials Wrap */}
-                <div 
-                  className="product-materials-wrap inline-flex justify-start items-center gap-2.5 cursor-pointer hover:opacity-80 transition-opacity"
-                  onClick={() => navigate('/upholstery')}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault()
-                      navigate('/upholstery')
-                    }
-                  }}
-                  aria-label="Перейти к вариантам обивки кресел"
-                >
-                  {/* Materials */}
-                  <div className="materials w-7 h-7 relative">
-                    {/* Border circle */}
-                    <div className="w-7 h-7 left-0 top-0 absolute rounded-full border-[0.50px] border-black/25"></div>
-                    {/* Material image */}
-                    <div 
-                      className="w-6 h-6 left-[2px] top-[2px] absolute rounded-full backdrop-blur-[2px] bg-cover bg-center"
-                      style={{ backgroundImage: `url(${materials[currentMaterialIndex]})` }}
-                    ></div>
+                {showroomUpholstery?.image_url && (
+                  <div
+                    className="product-materials-wrap inline-flex justify-start items-center cursor-pointer hover:opacity-80 transition-opacity"
+                    onClick={() => navigate('/upholstery')}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        navigate('/upholstery')
+                      }
+                    }}
+                    aria-label="Перейти к вариантам обивки кресел"
+                  >
+                    <div className="materials w-7 h-7 relative">
+                      <div className="w-7 h-7 left-0 top-0 absolute rounded-full border-[0.50px] border-black/25" />
+                      <div
+                        className="w-6 h-6 left-[2px] top-[2px] absolute rounded-full backdrop-blur-[2px] bg-cover bg-center"
+                        style={{ backgroundImage: `url(${showroomUpholstery.image_url})` }}
+                      />
+                    </div>
                   </div>
-
-                  {/* Count Materials */}
-                  <div className="count-materials inline-flex justify-start items-center gap-1.5">
-                    <span className="text-main-text" style={{ fontSize: '15px', fontWeight: 450 }}>
-                      / {upholsteryVariants?.length || 0}
-                    </span>
-                    <span className="text-main-text" style={{ fontSize: '15px' }} aria-hidden="true">→</span>
-                  </div>
-                </div>
+                )}
               </div>
             </div>
 
@@ -871,7 +861,7 @@ const Product = () => {
                 <div className="product-config-grid grid grid-cols-2 gap-2">
                   {configProductsForBlock.map((product) => {
                     const firstImage = product?.images?.[0]
-                    const href = `/product/${product.slug || product.id}`
+                    const href = getProductPath(product) || `/product/${product.slug || product.id}`
                     return (
                       <Link
                         key={product.id}

@@ -4,7 +4,14 @@ import AdminLayout from '@components/admin/AdminLayout'
 import FileUpload from '@components/admin/FileUpload'
 import ImageUpload from '@components/admin/ImageUpload'
 import useProductsStore from '@store/productsStore'
-import { getProjects, getProductProjects, setProductProjects, getProducts, updateProduct } from '@utils/api'
+import {
+  getProjects,
+  getProductProjects,
+  setProductProjects,
+  getProducts,
+  updateProduct,
+  getUpholsteryVariants,
+} from '@utils/api'
 
 // Генерация приватного токена для доступа по ссылке
 const generatePrivateToken = () => {
@@ -72,6 +79,7 @@ const AdminProductForm = () => {
     parent_product_id: null, // ID основной модели (для конфигураций)
     configurations: [], // Массив ID товаров-конфигураций
     show_only_on_main_model: false, // Только на странице основной модели (не в общем каталоге)
+    showroom_upholstery_variant_id: null, // Цвет на ветрине (upholstery)
     seo_title: '',
     seo_description: '',
     feed_price: '',
@@ -82,6 +90,7 @@ const AdminProductForm = () => {
   const [selectedProjects, setSelectedProjects] = useState([])
   const [availableProjects, setAvailableProjects] = useState([])
   const [availableProducts, setAvailableProducts] = useState([]) // Все товары для выбора конфигураций
+  const [upholsteryVariants, setUpholsteryVariants] = useState([])
   const [errors, setErrors] = useState({})
   const [submitting, setSubmitting] = useState(false)
   const [projectsDropdownOpen, setProjectsDropdownOpen] = useState(false)
@@ -90,6 +99,22 @@ const AdminProductForm = () => {
   const [configurationsDropdownOpen, setConfigurationsDropdownOpen] = useState(false)
   const [configurationsSearch, setConfigurationsSearch] = useState('')
   const configurationsDropdownRef = useRef(null)
+
+  useEffect(() => {
+    let cancelled = false
+    const loadUpholstery = async () => {
+      try {
+        const variants = await getUpholsteryVariants()
+        if (!cancelled) setUpholsteryVariants(variants || [])
+      } catch (error) {
+        console.error('Ошибка загрузки обивки:', error)
+      }
+    }
+    loadUpholstery()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   // Загружаем проекты для выбора
   useEffect(() => {
@@ -219,6 +244,7 @@ const AdminProductForm = () => {
         parent_product_id: currentProduct.parent_product_id || null,
         configurations: [], // Загрузим отдельно
         show_only_on_main_model: currentProduct.show_only_on_main_model ?? false,
+        showroom_upholstery_variant_id: currentProduct.showroom_upholstery_variant_id || null,
         seo_title: currentProduct.seo_title || '',
         seo_description: currentProduct.seo_description || '',
         feed_price:
@@ -327,6 +353,7 @@ const AdminProductForm = () => {
         status: formData.status,
         private_token: finalToken,
         show_only_on_main_model: formData.show_only_on_main_model ?? false,
+        showroom_upholstery_variant_id: formData.showroom_upholstery_variant_id || null,
         seo_title: formData.seo_title?.trim() || null,
         seo_description: formData.seo_description?.trim() || null,
         feed_price: formData.feed_price !== '' && formData.feed_price != null
@@ -632,6 +659,56 @@ const AdminProductForm = () => {
               onChange={(url) => setFormData({ ...formData, model_url: url })}
               label="3D модель"
             />
+          </div>
+
+          {/* Цвет на ветрине */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Цвет на ветрине
+            </label>
+            <select
+              value={formData.showroom_upholstery_variant_id || ''}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  showroom_upholstery_variant_id: e.target.value || null,
+                })
+              }
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-white"
+            >
+              <option value="">— не выбран —</option>
+              {upholsteryVariants.map((variant) => {
+                const collectionName = variant.upholstery_collections?.name
+                const label = [collectionName, variant.name || variant.color]
+                  .filter(Boolean)
+                  .join(' · ')
+                return (
+                  <option key={variant.id} value={variant.id}>
+                    {label || variant.id}
+                  </option>
+                )
+              })}
+            </select>
+            {formData.showroom_upholstery_variant_id && (() => {
+              const selected = upholsteryVariants.find(
+                (v) => v.id === formData.showroom_upholstery_variant_id
+              )
+              if (!selected?.image_url) return null
+              return (
+                <div className="mt-3 inline-flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full border border-black/20 overflow-hidden bg-gray-100 shrink-0">
+                    <img
+                      src={selected.image_url}
+                      alt=""
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <span className="text-xs text-gray-500">
+                    Так будет выглядеть кружок на странице товара (без подписи)
+                  </span>
+                </div>
+              )
+            })()}
           </div>
 
           {/* Презентация кресла PDF */}
