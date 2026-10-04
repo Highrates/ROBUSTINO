@@ -44,15 +44,25 @@ test -f "$DST/src/db.js" && echo "  src/db.js OK"
 test -f "$DST/src/chat/telegramNotify.js" && echo "  telegramNotify.js OK"
 test -f "$SHARED_LINK/siteChatLimits.js" && echo "  shared OK ($SHARED_LINK)"
 
-echo "Restart: pm2 restart robustino-api --update-env"
-pm2 restart robustino-api --update-env
-sleep 1
+# Never inherit a polluted shell env into PM2: sourcing .env expands bcrypt
+# `$2a$…` in bash and then `pm2 --update-env` freezes the broken value.
+# App loads secrets via dotenv from $DST/.env — clear overrides first.
+unset ADMIN_PASSWORD ADMIN_EMAIL JWT_SECRET DATABASE_URL 2>/dev/null || true
+
+echo "Restart: pm2 delete + start (dotenv from $DST/.env)"
+cd "$DST"
+pm2 delete robustino-api 2>/dev/null || true
+# Longer grace: cold start + telegram resolve can exceed 1s
+pm2 start src/index.js --name robustino-api --time
+sleep 3
 pm2 show robustino-api | grep -E "status|exec cwd" || true
 HEALTH_CODE="$(curl -sS -o /dev/null -w "%{http_code}" http://127.0.0.1:4000/api/health || true)"
 echo "health HTTP ${HEALTH_CODE}"
 if [[ "$HEALTH_CODE" != "200" ]]; then
   echo "ERROR: API not healthy after restart — last logs:"
   pm2 logs robustino-api --lines 20 --nostream || true
+  echo "Hint: check ADMIN_PASSWORD in $DST/.env is a bcrypt hash (starts with \$2)."
+  echo "  Never run: source $DST/.env  (bash eats \$2a in the hash)."
   exit 1
 fi
 
