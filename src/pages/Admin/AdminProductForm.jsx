@@ -314,6 +314,11 @@ const AdminProductForm = () => {
       newErrors.description = 'Описание товара обязательно'
     }
 
+    if (formData.show_only_on_main_model && !formData.parent_product_id) {
+      newErrors.parent_product_id =
+        'Для конфигурации выберите «Основная модель» (например, Нью / New) или добавьте товар в «Конфигурации» у основной модели'
+    }
+
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
@@ -401,7 +406,12 @@ const AdminProductForm = () => {
           const toSet = next.filter((id) => !previous.includes(id))
           await Promise.all([
             ...toClear.map((id) => updateProduct(id, { parent_product_id: null })),
-            ...toSet.map((id) => updateProduct(id, { parent_product_id: productId })),
+            ...toSet.map((id) =>
+              updateProduct(id, {
+                parent_product_id: productId,
+                show_only_on_main_model: true,
+              })
+            ),
           ])
         } catch (error) {
           console.error('Ошибка сохранения конфигураций:', error)
@@ -521,8 +531,8 @@ const AdminProductForm = () => {
             <textarea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              rows={4}
-              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none ${
+              rows={12}
+              className={`w-full min-h-[280px] px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-y ${
                 errors.description ? 'border-red-500' : 'border-gray-300'
               }`}
               required
@@ -733,14 +743,16 @@ const AdminProductForm = () => {
               value={formData.parent_product_id || ''}
               onChange={(e) => {
                 const newParentId = e.target.value || null
-                setFormData({ 
-                  ...formData, 
+                setFormData({
+                  ...formData,
                   parent_product_id: newParentId,
-                  // Если выбрана основная модель (стали конфигурацией), очищаем список конфигураций
-                  configurations: newParentId ? [] : formData.configurations
+                  configurations: newParentId ? [] : formData.configurations,
+                  show_only_on_main_model: newParentId ? true : formData.show_only_on_main_model,
                 })
               }}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none ${
+                errors.parent_product_id ? 'border-red-500' : 'border-gray-300'
+              }`}
             >
               <option value="">Нет (это основная модель)</option>
               {availableProducts
@@ -764,8 +776,11 @@ const AdminProductForm = () => {
               </p>
             )}
             <p className="text-sm text-gray-500 mt-1">
-              Выберите основную модель, если этот товар является её конфигурацией
+              Выберите основную модель, если этот товар является её конфигурацией (появится в блоке «Конфигурации модели» на её странице).
             </p>
+            {errors.parent_product_id && (
+              <p className="mt-1 text-sm text-red-600">{errors.parent_product_id}</p>
+            )}
           </div>
 
           {/* Конфигурации - показываем только для основных моделей */}
@@ -1124,8 +1139,8 @@ const AdminProductForm = () => {
             </div>
             <p className="mt-1 text-xs text-gray-500">
               {formData.show_only_on_main_model
-                ? 'Включено: не в общем каталоге (только конфигурации на странице основной модели). Для SEO: noindex, canonical на родителя, нет в sitemap.'
-                : 'Выключено: при статусе «Опубликовано» товар в каталоге и индексируется как обычная страница.'}
+                ? 'Не в общем каталоге — только на странице основной модели. Обязательно укажите «Основная модель» выше или добавьте этот товар в «Конфигурации» у родителя.'
+                : 'При «Опубликовано» товар виден в общем каталоге.'}
             </p>
             
             {/* Поле для приватной ссылки */}
