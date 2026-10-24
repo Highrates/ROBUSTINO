@@ -1,4 +1,8 @@
 import { buildFaqPageEntity } from '@shared/faqJsonLd'
+import {
+  buildBreadcrumbListEntity,
+  productBreadcrumbCrumbs,
+} from '@shared/breadcrumbs'
 
 /** Public site origin (browser). Override with VITE_SITE_URL if needed. */
 export const SITE_URL = (
@@ -64,15 +68,20 @@ export function productSeo(product, opts = {}) {
   const description = configOnly
     ? truncateMeta(
         product.seo_description?.trim() ||
+          product.card_excerpt?.trim() ||
           product.description ||
           DEFAULT_DESCRIPTION,
         140
       )
     : product.seo_description?.trim() ||
+      product.card_excerpt?.trim() ||
       truncateMeta(product.description) ||
       DEFAULT_DESCRIPTION
   const image =
     (Array.isArray(product.images) && product.images[0]) || DEFAULT_OG_IMAGE
+
+  const crumbs = productBreadcrumbCrumbs(product.name, path)
+  const breadcrumbLd = buildBreadcrumbListEntity(crumbs, absoluteUrl)
 
   const seo = {
     title,
@@ -82,11 +91,15 @@ export function productSeo(product, opts = {}) {
     image,
     type: 'product',
     noindex: configOnly,
+    breadcrumbs: crumbs.map((c) => ({
+      name: c.name,
+      to: c.path,
+    })),
   }
 
+  const graph = []
   if (!configOnly) {
-    seo.jsonLd = {
-      '@context': 'https://schema.org',
+    graph.push({
       '@type': 'Product',
       name: product.name,
       description: truncateMeta(product.description || description, 500),
@@ -94,6 +107,14 @@ export function productSeo(product, opts = {}) {
       brand: { '@type': 'Brand', name: 'ROBUSTINO' },
       sku: product.slug,
       url: absoluteUrl(path),
+    })
+  }
+  if (breadcrumbLd) graph.push(breadcrumbLd)
+
+  if (graph.length) {
+    seo.jsonLd = {
+      '@context': 'https://schema.org',
+      '@graph': graph,
     }
   }
 

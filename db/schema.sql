@@ -53,6 +53,7 @@ CREATE TABLE public.products (
   showroom_upholstery_variant_id uuid,
   seo_title text,
   seo_description text,
+  card_excerpt text,
   feed_price numeric,
   created_at timestamp with time zone DEFAULT now(),
   updated_at timestamp with time zone DEFAULT now(),

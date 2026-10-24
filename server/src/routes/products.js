@@ -13,12 +13,12 @@ const FIELDS = [
   'model_max_url', 'additional_models', 'images', 'specifications', 'status',
   'private_token', 'show_only_on_main_model', 'document_url', 'parent_product_id',
   'showroom_upholstery_variant_id',
-  'display_order', 'seo_title', 'seo_description', 'feed_price',
+  'display_order', 'seo_title', 'seo_description', 'card_excerpt', 'feed_price',
 ]
 
 /** Public list — never expose private_token */
 const LIST_COLS_PUBLIC = `id, name, type, status, created_at, display_order, images, slug,
-  parent_product_id, show_only_on_main_model, document_url`
+  parent_product_id, show_only_on_main_model, document_url, card_excerpt`
 
 /** Admin list — includes private_token for link_only management */
 const LIST_COLS_ADMIN = `${LIST_COLS_PUBLIC}, private_token`

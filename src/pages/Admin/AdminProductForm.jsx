@@ -82,6 +82,7 @@ const AdminProductForm = () => {
     showroom_upholstery_variant_id: null, // Цвет на ветрине (upholstery)
     seo_title: '',
     seo_description: '',
+    card_excerpt: '',
     feed_price: '',
   })
   // Сохраняем токен при смене статуса, чтобы можно было восстановить
@@ -247,6 +248,7 @@ const AdminProductForm = () => {
         showroom_upholstery_variant_id: currentProduct.showroom_upholstery_variant_id || null,
         seo_title: currentProduct.seo_title || '',
         seo_description: currentProduct.seo_description || '',
+        card_excerpt: currentProduct.card_excerpt || '',
         feed_price:
           currentProduct.feed_price != null && currentProduct.feed_price !== ''
             ? String(currentProduct.feed_price)
@@ -361,6 +363,7 @@ const AdminProductForm = () => {
         showroom_upholstery_variant_id: formData.showroom_upholstery_variant_id || null,
         seo_title: formData.seo_title?.trim() || null,
         seo_description: formData.seo_description?.trim() || null,
+        card_excerpt: formData.card_excerpt?.trim() || null,
         feed_price: formData.feed_price !== '' && formData.feed_price != null
           ? parseFloat(formData.feed_price)
           : null,
@@ -523,6 +526,24 @@ const AdminProductForm = () => {
             {errors.type && <p className="mt-1 text-sm text-red-600">{errors.type}</p>}
           </div>
 
+          {/* Краткое назначение для карточки каталога */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Текст на карточке (назначение)
+            </label>
+            <textarea
+              value={formData.card_excerpt}
+              onChange={(e) => setFormData({ ...formData, card_excerpt: e.target.value.slice(0, 280) })}
+              rows={3}
+              maxLength={280}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-y"
+              placeholder="Куда ставят и чем модель отличается (1–2 предложения, до 280 символов)"
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              Показывается в каталоге и на главной. {formData.card_excerpt.length}/280
+            </p>
+          </div>
+
           {/* Описание товара */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -542,7 +563,9 @@ const AdminProductForm = () => {
 
           {/* SEO (опционально) */}
           <div className="border border-gray-200 rounded-lg p-4 space-y-4 bg-gray-50">
-            <p className="text-sm font-medium text-gray-700">SEO (если пусто — из названия и описания)</p>
+            <p className="text-sm font-medium text-gray-700">
+              SEO (если пусто — из текста карточки и описания)
+            </p>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 SEO title

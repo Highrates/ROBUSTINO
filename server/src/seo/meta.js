@@ -10,6 +10,10 @@ import {
   resolveOgImage,
 } from './config.js'
 import { buildFaqPageEntity } from '../../../shared/faqJsonLd.js'
+import {
+  buildBreadcrumbListEntity,
+  productBreadcrumbCrumbs,
+} from '../../../shared/breadcrumbs.js'
 import { listActiveFaqs } from './queries.js'
 
 /**
@@ -23,6 +27,7 @@ function productMeta(product) {
   )
   const description =
     product.seo_description?.trim() ||
+    product.card_excerpt?.trim() ||
     truncateMeta(product.description) ||
     DEFAULT_DESCRIPTION
   const image =
@@ -32,6 +37,9 @@ function productMeta(product) {
     configOnly && product.parent_slug
       ? `/product/${product.parent_slug}`
       : path
+
+  const crumbs = productBreadcrumbCrumbs(product.name, path)
+  const breadcrumbLd = buildBreadcrumbListEntity(crumbs, absoluteUrl)
 
   const meta = {
     title,
@@ -46,11 +54,12 @@ function productMeta(product) {
       configOnly ? 280 : 800
     ),
     noindex: configOnly,
+    breadcrumbs: crumbs,
   }
 
+  const graph = []
   if (!configOnly) {
-    meta.jsonLd = {
-      '@context': 'https://schema.org',
+    graph.push({
       '@type': 'Product',
       name: product.name,
       description: truncateMeta(product.description || description, 500),
@@ -58,6 +67,14 @@ function productMeta(product) {
       brand: { '@type': 'Brand', name: 'ROBUSTINO' },
       sku: product.slug,
       url: absoluteUrl(path),
+    })
+  }
+  if (breadcrumbLd) graph.push(breadcrumbLd)
+
+  if (graph.length) {
+    meta.jsonLd = {
+      '@context': 'https://schema.org',
+      '@graph': graph,
     }
   }
 

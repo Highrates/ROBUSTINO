@@ -1149,6 +1149,9 @@ const Home = () => {
                     {product.type && (
                       <p className="product-type">{product.type}</p>
                     )}
+                    {product.card_excerpt && (
+                      <p className="product-excerpt">{product.card_excerpt}</p>
+                    )}
                   </div>
                 </Link>
               ))}

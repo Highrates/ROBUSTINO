@@ -54,7 +54,7 @@ export async function buildYmlFeed() {
         .map((img) => `      <picture>${escapeXml(absoluteUrl(img))}</picture>`)
         .join('\n')
       const desc = truncateMeta(
-        p.seo_description || p.description || 'Кресло ROBUSTINO.',
+        p.seo_description || p.card_excerpt || p.description || 'Кресло ROBUSTINO.',
         3000
       )
       const available = resolveFeedAvailable(p.in_stock) ? 'true' : 'false'
