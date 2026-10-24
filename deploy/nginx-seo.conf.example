@@ -1,24 +1,27 @@
 # SEO / SPA shell — fragment for robustino.ru
 # Apply alongside existing /api and /media locations.
 #
-# BEFORE nginx: deploy API so routes exist
+# BEFORE nginx:
+#   # never `source` the API .env (breaks bcrypt $2a$…)
 #   bash /root/robustino/scripts/deploy-api.sh
-#   curl -sI http://127.0.0.1:4000/api/seo/sitemap.xml   # expect 200 + application/xml
+#   # ensure SPA_DIST=/var/www/html in /root/robustino-api/.env
+#   curl -sI http://127.0.0.1:4000/ | head -5   # SEO shell when SPA_DIST set
 #
-# Quick patch on VPS:
+# Apply:
 #   bash /root/robustino/scripts/patch-nginx-seo.sh
-#   systemctl reload nginx
-#   curl -sI https://robustino.ru/sitemap.xml | head -8
+#   curl -sA 'YandexBot/3.0' https://robustino.ru/products | grep -E 'title|canonical|seo-content'
 #
 # Env on API (.env):
 #   SITE_PUBLIC_URL=https://robustino.ru
 #   SPA_DIST=/var/www/html
 #   SEO_CACHE_DIR=/var/www/html/seo-cache
 
-# --- Minimum fix (sitemap + feed) — insert BEFORE catch-all `location /` ---
+# --- Option A (recommended): assets on disk, HTML documents via API ---
+# Insert BEFORE catch-all `location /` in EVERY server{} (http + https).
 
 location = /sitemap.xml {
     proxy_pass http://127.0.0.1:4000/api/seo/sitemap.xml;
+    proxy_http_version 1.1;
     proxy_set_header Host $host;
     proxy_set_header X-Forwarded-Proto $scheme;
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -26,6 +29,7 @@ location = /sitemap.xml {
 
 location = /feed.yml {
     proxy_pass http://127.0.0.1:4000/api/seo/feed.yml;
+    proxy_http_version 1.1;
     proxy_set_header Host $host;
     proxy_set_header X-Forwarded-Proto $scheme;
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -36,25 +40,39 @@ location = /robots.txt {
     try_files /robots.txt =404;
 }
 
-# --- Optional: HTML shells via API (products/articles/…) ---
+# Homepage SEO shell
+location = / {
+    proxy_pass http://127.0.0.1:4000/;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header Accept $http_accept;
+}
 
-# location ~ ^/(product|article|page)/ {
-#     proxy_pass http://127.0.0.1:4000;
-#     proxy_set_header Host $host;
-#     proxy_set_header X-Forwarded-Proto $scheme;
-#     proxy_set_header Accept $http_accept;
+# Catalog / about / blog list / projects / upholstery
+location ~ ^/(products|about|articles|projects|upholstery)/?$ {
+    proxy_pass http://127.0.0.1:4000;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header Accept $http_accept;
+}
+
+# Product / article / FAQ page cards
+location ~ ^/(product|article|page)/ {
+    proxy_pass http://127.0.0.1:4000;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header Accept $http_accept;
+}
+
+# Catch-all remains for /assets, /admin, /media is separate:
+# location / {
+#     root /var/www/html;
+#     try_files $uri $uri/ /index.html;
 # }
-#
-# location ~ ^/(products|about|articles|projects|upholstery)/?$ {
-#     proxy_pass http://127.0.0.1:4000;
-#     proxy_set_header Host $host;
-#     proxy_set_header X-Forwarded-Proto $scheme;
-#     proxy_set_header Accept $http_accept;
-# }
-#
-# location = / {
-#     proxy_pass http://127.0.0.1:4000/;
-#     proxy_set_header Host $host;
-#     proxy_set_header X-Forwarded-Proto $scheme;
-#     proxy_set_header Accept $http_accept;
-# }
+# or proxy to pm2 `serve`

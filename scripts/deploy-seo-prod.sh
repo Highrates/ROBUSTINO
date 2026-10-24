@@ -6,10 +6,8 @@
 # Steps:
 #   1) migration 20261002_seo_fields.sql
 #   2) API env (SITE_PUBLIC_URL, SPA_DIST, SEO_CACHE_DIR) + deploy-api
-#   3) nginx: /sitemap.xml + /feed.yml → :4000 (Option A minimum)
-#   4) smoke checks
-#
-# Optional: SEO_HTML_SHELL=1 also proxies public HTML routes to API (needs SPA_DIST).
+#   3) nginx Option A: sitemap/feed + HTML document routes → :4000
+#   4) smoke checks (bot HTML must include #seo-content)
 
 set -euo pipefail
 
@@ -19,7 +17,6 @@ API_ENV="${API_ENV:-$API_DIR/.env}"
 SPA_DIST="${SPA_DIST:-/var/www/html}"
 SEO_CACHE_DIR="${SEO_CACHE_DIR:-/var/www/html/seo-cache}"
 SITE_PUBLIC_URL="${SITE_PUBLIC_URL:-https://robustino.ru}"
-SEO_HTML_SHELL="${SEO_HTML_SHELL:-0}"
 
 cd "$REPO"
 
@@ -74,26 +71,23 @@ curl -sS -o /dev/null -w "  local sitemap %{http_code} %{content_type}\n" \
 curl -sS -o /dev/null -w "  local feed    %{http_code} %{content_type}\n" \
   http://127.0.0.1:4000/api/seo/feed.yml
 
-echo "=== 3) nginx (Option A: sitemap/feed) ==="
+echo "=== 3) nginx (Option A: sitemap/feed + HTML shells) ==="
 bash "$REPO/scripts/patch-nginx-seo.sh"
-if [[ "$SEO_HTML_SHELL" == "1" ]]; then
-  echo "SEO_HTML_SHELL=1 — adding document route proxies (manual if script skipped)"
-  # Document routes are optional; patch-nginx handles sitemap/feed only.
-  # Operator can merge deploy/nginx-seo.conf.example document locations.
-fi
-systemctl reload nginx
 
 echo "=== 4) Smoke ==="
 curl -sS -o /dev/null -w "public /sitemap.xml  %{http_code} %{content_type}\n" \
   "$SITE_PUBLIC_URL/sitemap.xml"
 curl -sS -o /dev/null -w "public /feed.yml     %{http_code} %{content_type}\n" \
   "$SITE_PUBLIC_URL/feed.yml"
-curl -sS -o /dev/null -w "public /robots.txt   %{http_code}\n" \
-  "$SITE_PUBLIC_URL/robots.txt"
-curl -sS -o /dev/null -w "public /api/seo/sitemap.xml %{http_code} %{content_type}\n" \
-  "$SITE_PUBLIC_URL/api/seo/sitemap.xml"
+UA='Mozilla/5.0 (compatible; YandexBot/3.0)'
+curl -sS -A "$UA" -o /tmp/seo-home.html -w "public /             %{http_code} size=%{size_download}\n" \
+  "$SITE_PUBLIC_URL/"
+curl -sS -A "$UA" -o /tmp/seo-products.html -w "public /products      %{http_code} size=%{size_download}\n" \
+  "$SITE_PUBLIC_URL/products"
+grep -q 'id="seo-content"' /tmp/seo-products.html \
+  && echo "OK: /products has #seo-content" \
+  || echo "FAIL: /products still bare SPA — check SPA_DIST + nginx document locations"
 
 echo
-echo "Done. Expect /sitemap.xml → 200 application/xml (not text/html)."
-echo "Optional HTML shells: merge document locations from deploy/nginx-seo.conf.example"
+echo "Done. Expect unique title/canonical + #seo-content on / and /products."
 echo "Warm cache:  cd $API_DIR && node scripts/warm-seo-cache.mjs"
