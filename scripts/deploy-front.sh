@@ -54,6 +54,22 @@ if command -v pm2 >/dev/null 2>&1 && pm2 describe robustino >/dev/null 2>&1; the
   pm2 restart robustino
 fi
 
+# SEO HTML-shell caches index.html (in memory + seo-cache). After a Vite rebuild
+# asset hashes change; without API restart + warm, nginx→API still serves old
+# HTML that points at deleted /assets/* (browser: MIME text/html for css/js).
+if command -v pm2 >/dev/null 2>&1 && pm2 describe robustino-api >/dev/null 2>&1; then
+  pm2 restart robustino-api
+  API_DIR="${API_DIR:-/root/robustino-api}"
+  if [[ -f "$API_DIR/scripts/warm-seo-cache.mjs" ]]; then
+    (cd "$API_DIR" && node --env-file=.env scripts/warm-seo-cache.mjs) \
+      || echo "WARN: warm-seo-cache failed (non-fatal)"
+  fi
+fi
+
 echo "Done. Spot-check:"
 echo "  curl -sI https://robustino.ru/ | head -5"
+CSS=$(grep -oE 'assets/index-[^"]+\.css' "$REPO/dist/index.html" | head -1 || true)
+if [[ -n "${CSS:-}" ]]; then
+  echo "  curl -sI https://robustino.ru/$CSS | head -5"
+fi
 echo "  curl -sI https://robustino.ru/media/images/products/ | head -5"
