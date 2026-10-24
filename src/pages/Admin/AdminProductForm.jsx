@@ -540,7 +540,7 @@ const AdminProductForm = () => {
               placeholder="Куда ставят и чем модель отличается (1–2 предложения, до 280 символов)"
             />
             <p className="mt-1 text-xs text-gray-500">
-              Показывается в каталоге и на главной. {formData.card_excerpt.length}/280
+              Для SEO и фида, если не заполнен SEO description. {formData.card_excerpt.length}/280
             </p>
           </div>
 

@@ -896,26 +896,6 @@ h1, h2, h3, h4, h5, h6 {
     text-transform: uppercase;
   }
 
-  /* Short unique purpose on catalog cards */
-  .product-excerpt {
-    font-family: 'Commissioner', sans-serif;
-    font-size: 13px;
-    font-weight: 400;
-    line-height: 1.35;
-    color: #363636;
-    margin: 8px 0 0;
-    text-transform: none;
-    max-width: 300px;
-  }
-
-  .section-products .product-card .product-excerpt {
-    text-align: center;
-  }
-
-  .products-grid .product-excerpt {
-    max-width: none;
-  }
-
   /* All products section */
   .all-products {
     min-height: 100vh;
