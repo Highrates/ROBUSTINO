@@ -93,7 +93,21 @@ export async function buildSeoHtml(meta) {
 
   const h1 = escapeHtml(meta.h1 || title)
   const bodyText = escapeHtml(meta.bodyText || description)
-  const seoBlock = `<div id="seo-content"><h1>${h1}</h1><p>${bodyText}</p></div>`
+  let breadcrumbHtml = ''
+  if (Array.isArray(meta.breadcrumbs) && meta.breadcrumbs.length >= 2) {
+    const parts = meta.breadcrumbs
+      .map((c, i) => {
+        const name = escapeHtml(c.name || '')
+        const isLast = i === meta.breadcrumbs.length - 1
+        if (!isLast && c.path) {
+          return `<li><a href="${escapeHtml(c.path)}">${name}</a></li>`
+        }
+        return `<li><span>${name}</span></li>`
+      })
+      .join('')
+    breadcrumbHtml = `<nav aria-label="Хлебные крошки"><ol>${parts}</ol></nav>`
+  }
+  const seoBlock = `<div id="seo-content">${breadcrumbHtml}<h1>${h1}</h1><p>${bodyText}</p></div>`
 
   if (/id=["']root["']/.test(html)) {
     html = html.replace(

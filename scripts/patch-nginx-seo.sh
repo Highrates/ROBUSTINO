@@ -1,15 +1,6 @@
 #!/usr/bin/env bash
-# Patch nginx: sitemap/feed + public HTML SEO shells → Express :4000.
-# Inserts before EVERY catch-all `location / {` (http + https).
-#
-# Usage on VPS (as root):
-#   cd /root/robustino && git pull
-#   # ensure SPA_DIST in API .env, then:
-#   bash scripts/deploy-api.sh
-#   bash scripts/patch-nginx-seo.sh
-#
-# Verify:
-#   curl -sA 'YandexBot/3.0' https://robustino.ru/products | grep -E '<title|canonical|seo-content'
+# Patch nginx SEO HTML shells — tolerant of various `location /` styles.
+# Usage: bash /root/robustino/scripts/patch-nginx-seo.sh [/etc/nginx/sites-enabled/default]
 
 set -euo pipefail
 
@@ -22,11 +13,14 @@ if [[ -z "$SITE_CONF" ]]; then
 fi
 
 if [[ -z "${SITE_CONF:-}" || ! -f "$SITE_CONF" ]]; then
-  echo "Не найден nginx site conf. Передайте путь:"
-  echo "  bash $0 /etc/nginx/sites-enabled/YOUR_SITE"
+  echo "Не найден nginx site conf"
   ls -la /etc/nginx/sites-enabled/ 2>/dev/null || true
   exit 1
 fi
+
+echo "Conf: $SITE_CONF"
+echo "--- location / candidates ---"
+grep -nE '^\s*location\s+/' "$SITE_CONF" | head -40 || true
 
 python3 - "$SITE_CONF" <<'PY'
 import re, sys
@@ -75,19 +69,49 @@ snippet = """    # robustino-seo-routes
 
 """
 
-# Drop any previous SEO block(s) (old sitemap-only or full)
+# Remove previous SEO blocks (marker-based, non-greedy until blank line before next location or EOF of block)
 text2 = re.sub(
-    r"[ \t]*# robustino-seo-routes\n(?:[ \t]*location[^\n]+\n(?:[ \t]+[^\n]+\n)*[ \t]*\}\n*)+",
+    r"[ \t]*# robustino-seo-routes\n(?:[ \t]*location[\s\S]*?\n[ \t]*\}\n*)+",
     "",
     text,
-    flags=re.M,
 )
 
-# Insert before each top-level `location / {` (not /api, /media, …)
-pattern = re.compile(r'(^[ \t]*location[ \t]+/[ \t]*\{)', re.M)
-matches = list(pattern.finditer(text2))
+# Match catch-all SPA root: `location / {` or `location /` then `{` on next line
+# Exclude /api /media /assets /supabase etc.
+patterns = [
+    re.compile(r'(^[ \t]*location[ \t]+/[ \t]*\{)', re.M),
+    re.compile(r'(^[ \t]*location[ \t]+/[ \t]*\n[ \t]*\{)', re.M),
+]
+
+matches = []
+for pat in patterns:
+    matches = list(pat.finditer(text2))
+    if matches:
+        break
+
+# Fallback: insert before every `location /api` is wrong; try location that proxies to serve/pm2
 if not matches:
-    print("Не нашёл location / { — вставьте блок вручную из deploy/nginx-seo.conf.example")
+    # Any exact path location / with proxy_pass or try_files
+    for m in re.finditer(r'(^[ \t]*location[ \t]+/[ \t].*$)', text2, re.M):
+        line = m.group(1)
+        if re.search(r'location\s+/[a-zA-Z0-9_\-{]', line):
+            continue  # /api /media /product etc.
+        if re.match(r'^[ \t]*location[ \t]+/[ \t]*(\{|$)', line) or re.match(r'^[ \t]*location[ \t]+/[ \t]+', line):
+            # verify it's really only "/"
+            if re.match(r'^[ \t]*location[ \t]+/[ \t]*(\{|;|$)', line) or re.match(r'^[ \t]*location[ \t]+/\s*$', line):
+                matches.append(m)
+    # de-dup by start
+    seen = set()
+    uniq = []
+    for m in matches:
+        if m.start() not in seen:
+            seen.add(m.start())
+            uniq.append(m)
+    matches = uniq
+
+if not matches:
+    print("FAIL: не нашёл catch-all location /")
+    print("Покажите: grep -nE 'location' " + path)
     raise SystemExit(2)
 
 out = []
@@ -95,35 +119,27 @@ last = 0
 for m in matches:
     out.append(text2[last:m.start()])
     out.append(snippet)
-    out.append(m.group(1))
+    out.append(m.group(0) if m.lastindex is None else m.group(1) if m.lastindex >= 1 else m.group(0))
+    # If pattern captured only start, need full match
+    last = m.end()
+# Fix: always use full match span
+out = []
+last = 0
+for m in matches:
+    out.append(text2[last:m.start()])
+    out.append(snippet)
+    out.append(text2[m.start():m.end()])
     last = m.end()
 out.append(text2[last:])
 open(path, "w").write("".join(out))
-print(f"Patched {path}: SEO HTML shell before {len(matches)}× location /")
+print(f"Patched {path}: SEO block before {len(matches)}× location /")
 PY
 
 nginx -t
 systemctl reload nginx
-echo "Reloaded nginx."
+echo "Reloaded."
 
-echo "--- local API (needs SPA_DIST) ---"
-curl -sS -o /dev/null -w "GET /            %{http_code} size=%{size_download}\n" \
-  -H 'Accept: text/html' http://127.0.0.1:4000/ || true
-curl -sS -o /dev/null -w "GET /products    %{http_code} size=%{size_download}\n" \
-  -H 'Accept: text/html' http://127.0.0.1:4000/products || true
-
-echo "--- public bot view ---"
-UA='Mozilla/5.0 (compatible; YandexBot/3.0; +http://yandex.com/bots)'
-for path in / /products; do
-  echo ">>> $path"
-  curl -sS -A "$UA" "https://robustino.ru$path" \
-    | grep -iE '<title>|rel="canonical"|id="seo-content"|<h1' | head -8 || true
-done
-SLUG="$(curl -sS https://robustino.ru/sitemap.xml | grep -oE 'https://robustino.ru/product/[^<]+' | head -1 | sed 's|https://robustino.ru||')"
-if [[ -n "${SLUG:-}" ]]; then
-  echo ">>> $SLUG"
-  curl -sS -A "$UA" "https://robustino.ru$SLUG" \
-    | grep -iE '<title>|rel="canonical"|id="seo-content"|<h1' | head -8 || true
-fi
-echo
-echo "Expect: unique title/canonical per URL and #seo-content with H1 (not bare SPA shell)."
+UA='Mozilla/5.0 (compatible; YandexBot/3.0)'
+echo "--- public ---"
+curl -sS -A "$UA" https://robustino.ru/products | grep -iE '<title>|canonical|seo-content' | head -8 || true
+curl -sS -o /dev/null -w "products size=%{size_download} code=%{http_code}\n" -A "$UA" https://robustino.ru/products

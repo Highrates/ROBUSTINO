@@ -14,6 +14,7 @@ import { getProductProjects } from '@utils/api'
 import { getCatalogProducts, getNextCatalogProduct, getProductPath } from '@utils/catalogProducts'
 import { trackObjectView, trackProductView } from '@/utils/yandexMetrika'
 import SeoHead from '@components/common/SeoHead'
+import Breadcrumbs from '@components/common/Breadcrumbs'
 import { productSeo } from '@/utils/seo'
 import Loader from '@components/common/Loader'
 
@@ -747,6 +748,11 @@ const Product = () => {
     products.find((p) => p.id === currentProduct?.parent_product_id)?.slug
   const seo = productSeo(currentProduct, { parentSlug })
 
+  const breadcrumbItems = (seo.breadcrumbs || []).map((c) => ({
+    name: c.name,
+    to: c.to,
+  }))
+
   return (
     <div className="product-page relative bg-main-bg">
       <SeoHead {...seo} />
@@ -756,6 +762,12 @@ const Product = () => {
       <section ref={productSectionRef} className="product-section relative">
         <div className="padding-global">
           <div className="container-large product-section-inner relative">
+            {breadcrumbItems.length >= 2 && (
+              <Breadcrumbs
+                items={breadcrumbItems}
+                className="product-breadcrumbs"
+              />
+            )}
             
             {/* 3D Model Container - Fullscreen */}
             <div 
